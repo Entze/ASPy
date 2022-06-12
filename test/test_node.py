@@ -12,12 +12,12 @@ from aspy.Symbol import Variable, Function, Term
 p = BasicLiteral.make_literal('p')
 
 X = Variable('X')
-p_X = BasicLiteral.make_literal('p',X)
+p_X = BasicLiteral.make_literal('p', X)
 
 p_1 = BasicLiteral.make_literal('p', 1)
 
 Y = Variable('Y')
-p_Y = BasicLiteral.make_literal('p',Y)
+p_Y = BasicLiteral.make_literal('p', Y)
 
 q = BasicLiteral.make_literal('q')
 q_1 = BasicLiteral.make_literal('q', 1)
@@ -27,8 +27,11 @@ r = BasicLiteral.make_literal('r')
 s = BasicLiteral.make_literal('s')
 t = BasicLiteral.make_literal('t')
 
+
 def body_fails(num: int, all_quantified: Sequence[Variable] = (), existential_quantified: Sequence[Variable] = ()):
-    return BasicLiteral.make_literal('__body_fails', num, Function(arguments=all_quantified), Function(arguments=existential_quantified))
+    return BasicLiteral.make_literal('__body_fails', num, Function(arguments=all_quantified),
+                                     Function(arguments=existential_quantified))
+
 
 # noinspection DuplicatedCode
 class TestNodeMethods(unittest.TestCase):
@@ -389,7 +392,6 @@ class TestNodeMethods(unittest.TestCase):
                               msg="\nExpected: ({})\n  Actual: ({})\n".format(",".join(map(str, expected)),
                                                                               ",".join(map(str, actual))))
 
-
     def test_pred_node_expansion(self):
         r1 = NormalRule(p_X, (q_X,))
         r2 = NormalRule(q_1)
@@ -407,16 +409,24 @@ class TestNodeMethods(unittest.TestCase):
         actual.expand(rule_map)
 
         expected = GoalNode(subject=goal,
-                            hypotheses=[CoinductiveHypothesisSet({p_1, p_X}, {X: {Term.one()}})])
+                            hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
 
         child_lit_p_1 = LiteralNode(subject=p_1,
                                     parent=expected,
-                                    hypotheses=[CoinductiveHypothesisSet({p_1, p_X}, {X: {Term.one()}})])
+                                    hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
         expected.children = [child_lit_p_1]
         child_rule_r1 = RuleNode(subject=r1,
                                  parent=child_lit_p_1,
-                                 hypotheses=[CoinductiveHypothesisSet({p_1, p_X}, {X: {Term.one()}})])
+                                 hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
         child_lit_p_1.children = [child_rule_r1]
+        child_lit_q_X = LiteralNode(subject=q_X,
+                                    parent=child_rule_r1,
+                                    hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+        child_rule_r2 = RuleNode(subject=r2,
+                                 parent=child_lit_q_X,
+                                 hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+        child_lit_q_X.children = [child_rule_r2]
+        child_success = Leaf.success(child_rule_r2)
+        child_rule_r2.children = [child_success]
 
-
-
+        self.assertEquals(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
