@@ -27,7 +27,7 @@ def chk(num: int):
 # noinspection DuplicatedCode
 class TestProgramMethods(unittest.TestCase):
 
-    def test_dual_simple_1(self):
+    def test_prop_dual_simple_1(self):
         r1 = NormalRule(head=p, body=(a, -b))
         r2 = NormalRule(head=p, body=(r,))
 
@@ -49,7 +49,7 @@ class TestProgramMethods(unittest.TestCase):
         self.assertListEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}".format("; ".join(map(str, expected)),
                                                                                          "; ".join(map(str, actual))))
 
-    def test_dual_unit_1(self):
+    def test_prop_dual_unit_1(self):
         r1 = NormalRule(head=p, body=(a,))
 
         rules = (
@@ -62,7 +62,7 @@ class TestProgramMethods(unittest.TestCase):
         self.assertListEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}".format("; ".join(map(str, expected)),
                                                                                          "; ".join(map(str, actual))))
 
-    def test_dual_unit_2(self):
+    def test_prop_dual_unit_2(self):
         r1 = NormalRule(head=p, body=(a,))
         r2 = NormalRule(head=p, body=(-b,))
 
@@ -77,10 +77,7 @@ class TestProgramMethods(unittest.TestCase):
         self.assertListEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}".format("; ".join(map(str, expected)),
                                                                                          "; ".join(map(str, actual))))
 
-    def test_rule_map_creation(self):
-        pass
-
-    def test_call_graph_1(self):
+    def test_prop_call_graph_1(self):
         r1 = NormalRule(head=a, body=(b,))
         r2 = NormalRule(head=b)
 
@@ -95,7 +92,7 @@ class TestProgramMethods(unittest.TestCase):
 
         self.assertDictEqual(expected, actual)
 
-    def test_call_graph_2(self):
+    def test_prop_call_graph_2(self):
         r1 = NormalRule(head=a, body=(b,))
         r2 = NormalRule(head=b, body=(a,))
 
@@ -110,7 +107,7 @@ class TestProgramMethods(unittest.TestCase):
 
         self.assertDictEqual(expected, actual)
 
-    def test_call_graph_3(self):
+    def test_prop_call_graph_3(self):
         r1 = NormalRule(head=a, body=(b,))
         r2 = NormalRule(head=b, body=(a,))
         r3 = NormalRule(head=a, body=(-b,))
@@ -129,7 +126,7 @@ class TestProgramMethods(unittest.TestCase):
 
         self.assertDictEqual(expected, actual)
 
-    def test_call_graph_4(self):
+    def test_prop_call_graph_4(self):
         r1 = NormalRule(head=a, body=(-b,))
         r2 = NormalRule(head=b, body=(-c,))
         r3 = NormalRule(head=c, body=(-a,))
@@ -147,7 +144,7 @@ class TestProgramMethods(unittest.TestCase):
         self.assertDictEqual(expected, actual)
 
     @unittest.skip
-    def test_call_graph_5(self):
+    def test_prop_call_graph_5(self):
         r1 = NormalRule(head=a, body=(-b, -c))
         r2 = NormalRule(head=b, body=(-c,))
         r3 = NormalRule(head=c, body=(-a, -d))
@@ -166,7 +163,7 @@ class TestProgramMethods(unittest.TestCase):
 
         self.assertDictEqual(expected, actual)
 
-    def test_sASP_program_dict(self):
+    def test_prop_sASP_program_dict(self):
         r1 = NormalRule(head=a, body=(-b,))
         d1 = NormalRule(head=-a, body=(b,))
         r2 = NormalRule(head=b, body=(-c,))

@@ -18,7 +18,7 @@ t = BasicLiteral.make_literal('t')
 # noinspection DuplicatedCode
 class TestNodeMethods(unittest.TestCase):
 
-    def test_failing_branching_expand_literal_node(self):
+    def test_prop_failing_branching_expand_literal_node(self):
         """
         Test if a node
 
@@ -66,7 +66,7 @@ class TestNodeMethods(unittest.TestCase):
         expected.children = [child_q, child_r]
         self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}".format(expected, actual))
 
-    def test_succeeding_branching_expand_literal_node(self):
+    def test_prop_succeeding_branching_expand_literal_node(self):
         """
         Test if a node
 
@@ -124,7 +124,7 @@ class TestNodeMethods(unittest.TestCase):
         expected.children = [child_lit_q, child_lit_r]
         self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}".format(expected, actual))
 
-    def test_tight_positive_branching(self):
+    def test_prop_tight_positive_branching(self):
         """
         Test if the query
 
@@ -201,7 +201,7 @@ class TestNodeMethods(unittest.TestCase):
         actual_answer_sets = cast(tuple, actual.answer_sets())
         self.assertTupleEqual(expected_answer_sets, actual_answer_sets)
 
-    def test_simple_negative(self):
+    def test_prop_simple_negative(self):
         """
         Test if the query
 
@@ -263,7 +263,7 @@ class TestNodeMethods(unittest.TestCase):
         actual_answer_sets = cast(tuple, actual.answer_sets())
         self.assertTupleEqual(expected_answer_sets, actual_answer_sets)
 
-    def test_loop_negative_1(self):
+    def test_prop_loop_negative_1(self):
         """
         Test if the query
 
@@ -300,7 +300,7 @@ class TestNodeMethods(unittest.TestCase):
                               msg="\nExpected: ({})\n  Actual: ({})\n".format(",".join(map(str, expected)),
                                                                               ",".join(map(str, actual))))
 
-    def test_loop_negative_2(self):
+    def test_prop_loop_negative_2(self):
         """
         Test if the query
 
@@ -337,7 +337,7 @@ class TestNodeMethods(unittest.TestCase):
                               msg="\nExpected: ({})\n  Actual: ({})\n".format(",".join(map(str, expected)),
                                                                               ",".join(map(str, actual))))
 
-    def test_loop_positive(self):
+    def test_prop_loop_positive(self):
         """
         Test if the query
 
