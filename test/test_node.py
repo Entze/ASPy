@@ -1,5 +1,5 @@
 import unittest
-from typing import cast
+from typing import cast, Sequence
 
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
 from aspy.Goal import Goal
@@ -7,13 +7,28 @@ from aspy.Literal import BasicLiteral
 from aspy.Node import RuleNode, LiteralNode, Leaf, GoalNode
 from aspy.NormalRule import NormalRule
 from aspy.Program import RuleMap
+from aspy.Symbol import Variable, Function, Term
 
 p = BasicLiteral.make_literal('p')
+
+X = Variable('X')
+p_X = BasicLiteral.make_literal('p',X)
+
+p_1 = BasicLiteral.make_literal('p', 1)
+
+Y = Variable('Y')
+p_Y = BasicLiteral.make_literal('p',Y)
+
 q = BasicLiteral.make_literal('q')
+q_1 = BasicLiteral.make_literal('q', 1)
+q_X = BasicLiteral.make_literal('q', X)
+
 r = BasicLiteral.make_literal('r')
 s = BasicLiteral.make_literal('s')
 t = BasicLiteral.make_literal('t')
 
+def body_fails(num: int, all_quantified: Sequence[Variable] = (), existential_quantified: Sequence[Variable] = ()):
+    return BasicLiteral.make_literal('__body_fails', num, Function(arguments=all_quantified), Function(arguments=existential_quantified))
 
 # noinspection DuplicatedCode
 class TestNodeMethods(unittest.TestCase):
@@ -373,3 +388,35 @@ class TestNodeMethods(unittest.TestCase):
         self.assertTupleEqual(expected, actual,
                               msg="\nExpected: ({})\n  Actual: ({})\n".format(",".join(map(str, expected)),
                                                                               ",".join(map(str, actual))))
+
+
+    def test_pred_node_expansion(self):
+        r1 = NormalRule(p_X, (q_X,))
+        r2 = NormalRule(q_1)
+        d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
+        d2 = NormalRule(body_fails(1, (X,)), -q_X)
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1], "dual": [d1]},
+            "q/1.": {"primal": [r2], "dual": []},
+            "__body_fails/3": {"primal": [d2], "dual": []}
+        }
+
+        goal = Goal((p_1,))
+        actual = GoalNode(subject=goal)
+        actual.init()
+        actual.expand(rule_map)
+
+        expected = GoalNode(subject=goal,
+                            hypotheses=[CoinductiveHypothesisSet({p_1, p_X}, {X: {Term.one()}})])
+
+        child_lit_p_1 = LiteralNode(subject=p_1,
+                                    parent=expected,
+                                    hypotheses=[CoinductiveHypothesisSet({p_1, p_X}, {X: {Term.one()}})])
+        expected.children = [child_lit_p_1]
+        child_rule_r1 = RuleNode(subject=r1,
+                                 parent=child_lit_p_1,
+                                 hypotheses=[CoinductiveHypothesisSet({p_1, p_X}, {X: {Term.one()}})])
+        child_lit_p_1.children = [child_rule_r1]
+
+
+

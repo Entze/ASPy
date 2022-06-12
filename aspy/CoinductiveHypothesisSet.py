@@ -1,12 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Set
+from typing import Set, MutableMapping
 
 from aspy.Literal import BasicLiteral
+from aspy.Symbol import Variable, Symbol
 
 
 @dataclass(order=True)
 class CoinductiveHypothesisSet:
     literals: Set[BasicLiteral] = field(default_factory=set)
+    bindings: MutableMapping[Variable, Set[Symbol]] = field(default_factory=dict)
 
     @property
     def is_consistent(self) -> bool:
