@@ -3,3 +3,5 @@ channels:
   - conda-forge
 dependencies:
   - python>=3.6,<4
+  - mypy>=0.900,<1
+  - pylint>=2.14,<3
