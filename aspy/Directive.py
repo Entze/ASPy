@@ -27,12 +27,24 @@ class Directive(HeadClauseElement):
         return self.name == 'true'
 
     @property
+    def is_pos(self) -> bool:
+        return self.is_true
+
+    @property
     def is_false(self) -> bool:
         return self.name == 'false'
 
     @property
+    def is_neg(self) -> bool:
+        return self.is_false
+
+    @property
     def is_forall(self) -> bool:
         return self.name == 'forall'
+
+    @property
+    def signature(self) -> str:
+        return '#{}/{}.'.format(self.name, len(self.arguments))
 
     def __abs__(self):
         raise NotImplementedError

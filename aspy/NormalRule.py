@@ -16,7 +16,11 @@ class NormalRule(Rule):
 
     @property
     def head_signature(self) -> str:
-        return self.head.atom_signature
+        return self.head.signature
+
+    @property
+    def has_variables_in_head(self) -> bool:
+        return self.head.has_variable
 
     @property
     def has_existential_vars(self) -> bool:

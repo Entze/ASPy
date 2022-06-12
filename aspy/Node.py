@@ -186,7 +186,7 @@ class LiteralNode(Node):
         conclusive = self.coinductive_hypotheses_check()
 
         if not conclusive:
-            rules = rule_map[self.subject.atom_signature]['primal' if self.subject.is_pos else 'dual']
+            rules = rule_map[self.subject.signature]['primal' if self.subject.is_pos else 'dual']
             for rule in rules:
                 child = RuleNode(subject=rule,
                                  parent=self,

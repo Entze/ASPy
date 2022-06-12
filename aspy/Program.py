@@ -1,12 +1,12 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Mapping, Sequence, List, Dict, Set
+from typing import Mapping, Sequence, List, Dict, Set, Tuple
 
 from aspy.Atom import Atom
 from aspy.ClauseElement import ClauseElement, HeadClauseElement
 from aspy.Directive import Directive
-from aspy.Literal import Literal, BasicLiteral
+from aspy.Literal import Literal, BasicLiteral, Sign
 from aspy.NormalRule import NormalRule
 from aspy.Rule import Rule
 from aspy.Symbol import Function, Term, IntegerConstant
@@ -35,7 +35,7 @@ class Program:
         return prop_atoms2rules, pred_atoms2rules
 
     @cached_property
-    def canonical_program_dicts(self):
+    def canonical_program_dicts(self) -> Tuple[Mapping[str, Set[Rule]], Mapping[str, Set[Rule]]]:
         prop_atoms2rules = defaultdict(set)
         pred_atoms2rules = defaultdict(set)
         queue: List[Rule] = [*self.rules]
@@ -56,29 +56,95 @@ class Program:
                     if not literal.has_variable or not isinstance(literal, Literal):
                         continue
                     if abs(literal) in prop_atoms2rules:
-                        queue.extend(prop_atoms2rules[literal.atom_signature])
-                        prop_atoms2rules[literal.atom_signature].clear()
+                        queue.extend(prop_atoms2rules[literal.signature])
+                        prop_atoms2rules[literal.signature].clear()
                     else:
-                        pred_atoms2rules[literal.atom_signature] = set()
+                        pred_atoms2rules[literal.signature] = set()
 
         return prop_atoms2rules, pred_atoms2rules
 
     @cached_property
-    def sASP_program_dict(self):
-        signature_rules = defaultdict(lambda: dict(primal=list(), dual=list()))
+    def call_graph(self):
+        prop = self.canonical_propositional_rules
+        pred = self.canonical_predicate_rules
+        prop_sig, pred_sig = self.canonical_program_dicts
+
+        graph = defaultdict(set)
+        for rule in (*prop, *pred):
+            graph.setdefault(rule, set())
+            queue = [(0, rule)]
+            while queue:
+                negation, current = queue.pop(0)
+                for clause_element in current.body:
+                    if isinstance(clause_element, BasicLiteral):
+                        sign = negation ^ clause_element.is_neg
+                        adj_rules = prop_sig[clause_element.signature] | pred_sig[clause_element.signature]
+                        for adj_rule in adj_rules:
+                            if adj_rule.head in graph[rule] or adj_rule.head == rule.head:
+                                continue
+                            queue.append((sign, adj_rule))
+
+                        graph[rule].add(BasicLiteral(Sign(sign), atom=clause_element.atom))
+
+        return graph
+
+    @cached_property
+    def olon_rules(self) -> Sequence[NormalRule]:
+        graph = self.call_graph
+        olon_rules = []
+        for rule in graph:
+            if -rule.head in graph[rule]:
+                olon_rules.append(rule)
+        return tuple(olon_rules)
+
+    @cached_property
+    def sASP_program_dict(self) -> RuleMap:
+        signature_rules: Dict[str, Dict[str, List[NormalRule]]] = defaultdict(lambda: dict(primal=list(), dual=list()))
         prop_dual = Program.propositional_dual(self.canonical_propositional_rules)
         pred_dual = Program.predicate_dual(self.canonical_predicate_rules)
         prop, pred = self.program_dicts
-        for signature, rules in prop.items():
+        for signature, rules in (*prop.items(), *pred.items()):
             signature_rules[signature]['primal'].extend(rules)
-        for signature, rules in pred.items():
-            signature_rules[signature]['primal'].extend(rules)
-        for rule in prop_dual:
+        for rule in (*prop_dual, *pred_dual):
             head_signature = rule.head_signature
             signature_rules[head_signature]['primal' if rule.head.is_pos else 'dual'].append(rule)
-        for rule in pred_dual:
-            head_signature = rule.head_signature
-            signature_rules[head_signature]['primal' if rule.head.is_pos else 'dual'].append(rule)
+
+        olon_rules = self.olon_rules
+        __nmr_chk = BasicLiteral.make_literal('__nmr_chk')
+        nmr_rule_body = []
+        prop_constraint_rules = []
+        pred_constraint_rules = []
+        i = 0
+        for olon_rule in olon_rules:
+            i += 1
+            chk = BasicLiteral.make_literal('__chk', i)
+            nmr_rule_body.append(-chk)
+            constraint_rule = NormalRule(chk, (*olon_rule.body, -olon_rule.head))
+            if constraint_rule.has_variables:
+                pred_constraint_rules.append(constraint_rule)
+            else:
+                prop_constraint_rules.append(constraint_rule)
+        for integrity_constraint in signature_rules[Directive.false().signature][
+            'primal' if Directive.false().is_pos else 'dual']:
+            i += 1
+            chk = BasicLiteral.make_literal('__chk', i)
+            nmr_rule_body.append(-chk)
+            constraint_rule = NormalRule(chk, integrity_constraint.body)
+            if constraint_rule.has_variables:
+                pred_constraint_rules.append(constraint_rule)
+            else:
+                prop_constraint_rules.append(constraint_rule)
+
+        prop_check_rules = Program.propositional_dual(prop_constraint_rules)
+        pred_check_rules = Program.propositional_dual(pred_constraint_rules)
+        for prop_check_rule in prop_check_rules:
+            signature_rules[prop_check_rule.head.signature]['primal' if prop_check_rule.head.is_pos else 'dual'].append(prop_check_rule)
+        for pred_check_rule in pred_check_rules:
+            signature_rules[pred_check_rule.head.signature]['primal' if pred_check_rule.head.is_pos else 'dual'].append(pred_check_rule)
+
+        nmr_rule = NormalRule(__nmr_chk, tuple(nmr_rule_body))
+        signature_rules[__nmr_chk.signature]['primal'].append(nmr_rule)
+
         return signature_rules
 
     @property

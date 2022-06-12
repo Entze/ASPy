@@ -12,7 +12,7 @@ class Literal(HeadClauseElement):
 
     @property
     @abc.abstractmethod
-    def atom_signature(self) -> str:
+    def signature(self) -> str:
         raise NotImplementedError
 
     @property
@@ -61,7 +61,7 @@ class BasicLiteral(Literal):
         return self.atom.variables
 
     @property
-    def atom_signature(self) -> str:
+    def signature(self) -> str:
         return self.atom.signature
 
     def __str__(self):
