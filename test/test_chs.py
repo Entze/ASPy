@@ -1102,3 +1102,43 @@ class TestPropagateLiteralUpToRule(unittest.TestCase):
         actual = chs.propagate_literal_up_to_rule(q_F0, 0, r1)
         expected = CoinductiveHypothesisSet({a_X}, {X: {Term.zero()}, Y: {Term.one()}})
         self.assertEqual(expected, actual)
+
+class TestPropagateRuleUpToLiteral(unittest.TestCase):
+
+    def setUp(self) -> None:
+        CoinductiveHypothesisSet.unused_var_int = 0
+
+    def test_empty1(self):
+        r1 = NormalRule(p, (q,))
+        chs = CoinductiveHypothesisSet()
+        actual = chs.propagate_rule_up_to_literal(r1, p)
+        expected = CoinductiveHypothesisSet()
+        self.assertEqual(expected, actual)
+
+    def test_empty2(self):
+        r1 = NormalRule(p_X, (q_Y,))
+        chs = CoinductiveHypothesisSet()
+        actual = chs.propagate_rule_up_to_literal(r1, p_X)
+        expected = CoinductiveHypothesisSet()
+        self.assertEqual(expected, actual)
+
+    def test_prop(self):
+        r1 = NormalRule(p, (q, a))
+        chs = CoinductiveHypothesisSet({a_X, p_Y}, {X: {Term.one()}, Y: {Term.zero()}}, {X:{Term.zero()}, Y:{Term.one()}})
+        actual = chs.propagate_rule_up_to_literal(r1, p)
+        expected = CoinductiveHypothesisSet({a_X, p_Y}, {X: {Term.one()}, Y: {Term.zero()}}, {X:{Term.zero()}, Y:{Term.one()}})
+        self.assertEqual(expected, actual)
+
+    def test_bound_var1(self):
+        r1 = NormalRule(p_X, (q_X,))
+        chs = CoinductiveHypothesisSet({q_X}, {X: {Term.one()}})
+        actual = chs.propagate_rule_up_to_literal(r1, p_1)
+        expected = CoinductiveHypothesisSet({q_X}, {X: {Term.one()}}, {X: set()})
+        self.assertEqual(expected, actual)
+
+    def test_bound_var2(self):
+        r1 = NormalRule(p_X, (q_Y,))
+        chs = CoinductiveHypothesisSet({q_Y}, {Y: {Term.one()}})
+        actual = chs.propagate_rule_up_to_literal(r1, p_F0)
+        expected = CoinductiveHypothesisSet({q_Y}, {Y: {Term.one()}})
+        self.assertEqual(expected, actual)

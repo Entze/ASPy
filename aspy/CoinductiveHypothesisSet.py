@@ -391,7 +391,28 @@ class CoinductiveHypothesisSet:
         return chs
 
     def propagate_rule_up_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
-        pass
+        head_literal = rule.head
+        rename_map = {}
+        for elem in (*self.literals, head_literal):
+            if not isinstance(elem, BasicLiteral):
+                continue
+            if elem.is_pos != literal.is_pos:
+                continue
+            if not elem.atom.match(literal.atom):
+                continue
+            if not self.unifies(elem.atom.symbol, literal.atom.symbol):
+                continue
+            queue = [(elem.atom.symbol, literal.atom.symbol)]
+            while queue:
+                old_arg, new_arg = queue.pop(0)
+                if isinstance(old_arg, Variable) and isinstance(new_arg, Variable):
+                    rename_map[old_arg] = new_arg
+                elif isinstance(old_arg, TopLevelSymbol) and isinstance(new_arg, TopLevelSymbol):
+                    if not old_arg.match(new_arg):
+                        continue
+                    for i in range(old_arg.arity):
+                        queue.append((old_arg.function_arguments[i], new_arg.function_arguments[i]))
+        self.renames_(rename_map)
 
     @staticmethod
     def __constructive_unification_var_non_var(chs: ForwardCoinductiveHypothesisSet,
