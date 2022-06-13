@@ -4,6 +4,7 @@ from typing import Union, TypeVar, Optional, Sequence, MutableSequence
 
 from aspy.ClauseElement import ClauseElement
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
+from aspy.Comparison import Comparison
 from aspy.Directive import Directive
 from aspy.Goal import Goal
 from aspy.Literal import BasicLiteral
@@ -147,7 +148,7 @@ class RuleNode(Node):
         if self.is_expanded:
             return
         self.children = []
-        for literal_index,clause_element in enumerate(self.subject.body):
+        for literal_index, clause_element in enumerate(self.subject.body):
             if isinstance(clause_element, BasicLiteral):
                 if clause_element.has_variable and self.hypotheses:
                     literal = self.hypotheses[0].new_variables(clause_element)
@@ -199,8 +200,10 @@ class LiteralNode(Node):
             rules = rule_map[self.subject.signature]['primal' if self.subject.is_pos else 'dual']
             expansion_impossible = True
             for rule in rules:
-                if any(hypothesis.unifies(self.subject.atom.symbol, rule.head.atom.symbol) for hypothesis in self.hypotheses):
-                    hypotheses = [hypothesis.propagate_literal_down_to_rule(self.subject, rule) for hypothesis in self.hypotheses]
+                if any(hypothesis.unifies(self.subject.atom.symbol, rule.head.atom.symbol) for hypothesis in
+                       self.hypotheses):
+                    hypotheses = [hypothesis.propagate_literal_down_to_rule(self.subject, rule) for hypothesis in
+                                  self.hypotheses]
                     child = RuleNode(subject=rule,
                                      parent=self,
                                      hypotheses=hypotheses)
@@ -250,3 +253,32 @@ class LiteralNode(Node):
             if node.subject.is_neg:
                 negations += 1
         return False
+
+
+class UnificationNode(Node):
+    subject: Comparison = field(default_factory=Comparison)
+
+    @property
+    def is_success(self) -> bool:
+        return self.is_expanded and any(child.is_success for child in self.children)
+
+    def expand(self, rule_map: Optional[RuleMap] = None):
+        if self.is_expanded:
+            return
+        self.children = []
+
+        unifications = []
+        for hypothesis in self.hypotheses:
+            unifies = hypothesis.constructive_unification(self.subject.left, self.subject.right)
+            unifications.extend(unifies)
+
+        if unifications:
+            child = Leaf.success(self)
+        else:
+            child = Leaf.fail(self)
+        self.children.append(child)
+
+        self.hypotheses = unifications
+
+class Disjunification(Node):
+    pass

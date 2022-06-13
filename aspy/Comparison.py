@@ -59,6 +59,18 @@ class Comparison(ClauseElement):
     def variables(self) -> Set[Variable]:
         return self.left.variables | self.right.variables
 
+    @property
+    def is_pos(self):
+        return self.comparison is ComparisonOperator.Equal
+
+    @property
+    def is_neg(self):
+        return self.comparison is not ComparisonOperator.Equal
+
+    @property
+    def signature(self) -> str:
+        return "{}({},{})/2.".format(self.comparison, self.left, self.right)
+
     def substitute_variables(self, substitute_map: Mapping[Variable, Symbol]):
         return Comparison(self.left.substitute_variables(substitute_map), self.comparison,
                           self.right.substitute_variables(substitute_map))

@@ -2,9 +2,10 @@ import unittest
 from typing import cast, Sequence
 
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
+from aspy.Comparison import Comparison, ComparisonOperator
 from aspy.Goal import Goal
 from aspy.Literal import BasicLiteral
-from aspy.Node import RuleNode, LiteralNode, Leaf, GoalNode
+from aspy.Node import RuleNode, LiteralNode, Leaf, GoalNode, UnificationNode
 from aspy.NormalRule import NormalRule
 from aspy.Program import RuleMap
 from aspy.Symbol import Variable, Function, Term, IntegerConstant
@@ -498,7 +499,8 @@ class TestNodeMethods(unittest.TestCase):
 
         expected = GoalNode(subject=goal,
                             hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}}, {X: set()}),
-                                        CoinductiveHypothesisSet({p_X, q_X}, {X: {Term(IntegerConstant(2))}}, {X: set()})
+                                        CoinductiveHypothesisSet({p_X, q_X}, {X: {Term(IntegerConstant(2))}},
+                                                                 {X: set()})
                                         ])
 
         child_lit_p_X = LiteralNode(subject=p_X,
@@ -548,7 +550,7 @@ class TestNodeMethods(unittest.TestCase):
 
     def test_pred_answer_sets2(self):
         r1 = NormalRule(p_X, (-q,))
-        r2 = NormalRule(q,)
+        r2 = NormalRule(q, )
         d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
         d2 = NormalRule(body_fails(1, (X,)), (q,))
         rule_map: RuleMap = {
@@ -572,7 +574,7 @@ class TestNodeMethods(unittest.TestCase):
 
         rule_map: RuleMap = {
             "p/1.": {"primal": [r1]},
-            "q/1.": {"primal": [r2,r3]}
+            "q/1.": {"primal": [r2, r3]}
         }
 
         goal = Goal((p_X,))
@@ -581,7 +583,7 @@ class TestNodeMethods(unittest.TestCase):
         query.expand(rule_map)
         actual = query.answer_sets()
         expected = (CoinductiveHypothesisSet({p_X, q_F2},
-                                             {F2:{Term.zero()}},
+                                             {F2: {Term.zero()}},
                                              {F2: set()}), CoinductiveHypothesisSet({p_X, q_F2},
                                                                                     {F2: {Term.one()}},
                                                                                     {F2: set()}))
@@ -594,7 +596,7 @@ class TestNodeMethods(unittest.TestCase):
 
         rule_map: RuleMap = {
             "p/1.": {"primal": [r1]},
-            "q/1.": {"primal": [r2,r3]}
+            "q/1.": {"primal": [r2, r3]}
         }
 
         goal = Goal((p_X,))
@@ -604,5 +606,24 @@ class TestNodeMethods(unittest.TestCase):
         actual = query.answer_sets()
         expected = (CoinductiveHypothesisSet({p_X, q_F0},
                                              {F0: {Term.zero()}},
-                                             {F0: set()}), CoinductiveHypothesisSet({p_X, q_F0}, {F0:{Term.one()}}, {F0: set()}))
+                                             {F0: set()}),
+                    CoinductiveHypothesisSet({p_X, q_F0}, {F0: {Term.one()}}, {F0: set()}))
         self.assertEqual(expected, actual)
+
+
+class TestUnificationNode(unittest.TestCase):
+
+    def test_simple(self):
+        A = Variable('A')
+        B = Variable('B')
+        comp = Comparison(A, ComparisonOperator.Equal, B)
+
+        chs = [CoinductiveHypothesisSet(prohibited={A: {Term.zero()}, B:set()}),
+               CoinductiveHypothesisSet(prohibited={A: {Term.one()}, B:set()})]
+        node = UnificationNode(subject=comp, hypotheses=chs)
+        node.expand()
+        actual = node.hypotheses
+        expected = [
+        CoinductiveHypothesisSet(bindings={A: {B}, B: {A}}, prohibited={A: {Term.zero()}, B: {Term.zero()}}),
+        CoinductiveHypothesisSet(bindings={A: {B}, B: {A}}, prohibited={A: {Term.one()}, B: {Term.one()}})]
+        self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
