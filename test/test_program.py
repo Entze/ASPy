@@ -155,10 +155,10 @@ class TestProgramMethods(unittest.TestCase):
         actual = program.call_graph
 
         expected = {
-            r1: {a, c, d, -a, -b, -c, -d},
-            r2: {a, d, -a, -b},
-            r3: {a, b, c, d, -a, -b, -c, -d},
-            r4: {a, b, c, d, -a, -b, -c, -d},
+            r1: {a, b, c, d, -a, -b, -c, -d},
+            r2: {a, b, d, -a, -b, -c},
+            r3: {a, b, c, -a, -b, -c, -d},
+            r4: {a, b, c, d, -a, -c, -d},
         }
 
         self.assertDictEqual(expected, actual)
