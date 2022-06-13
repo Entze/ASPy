@@ -1,8 +1,34 @@
 # noinspection DuplicatedCode
 import unittest
+from collections import defaultdict
 
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
+from aspy.Literal import BasicLiteral
+from aspy.NormalRule import NormalRule
 from aspy.Symbol import Variable, Term, Function
+
+X = Variable('X')
+Y = Variable('Y')
+F0 = Variable('F0')
+F1 = Variable('F1')
+
+a = BasicLiteral.make_literal('a')
+a_X = BasicLiteral.make_literal('a', X)
+a_Y = BasicLiteral.make_literal('a', Y)
+a_F0 = BasicLiteral.make_literal('a', F0)
+a_F1 = BasicLiteral.make_literal('a', F1)
+
+q = BasicLiteral.make_literal('q')
+q_X = BasicLiteral.make_literal('q', X)
+q_Y = BasicLiteral.make_literal('q', Y)
+q_F0 = BasicLiteral.make_literal('q', F0)
+
+p = BasicLiteral.make_literal('p')
+p_1 = BasicLiteral.make_literal('p', 1)
+
+p_X = BasicLiteral.make_literal('p', X)
+p_Y = BasicLiteral.make_literal('p', Y)
+p_F0 = BasicLiteral.make_literal('p', F0)
 
 
 class TestUnifies(unittest.TestCase):
@@ -292,7 +318,7 @@ class TestConstructiveUnification(unittest.TestCase):
         chs = CoinductiveHypothesisSet()
         actual = chs.constructive_unification(var1, var2)
         expected = (
-        CoinductiveHypothesisSet(bindings={var1: {var2}, var2: {var1}}, prohibited={var1: set(), var2: set()}),)
+            CoinductiveHypothesisSet(bindings={var1: {var2}, var2: {var1}}, prohibited={var1: set(), var2: set()}),)
         self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
 
     def test_var_var_bound_positive(self):
@@ -656,7 +682,6 @@ class TestDisunifies(unittest.TestCase):
 
 class TestConstructiveDisjunification(unittest.TestCase):
 
-
     def test_negvar_nonvar_empty_positive(self):
         negvar = Variable('A')
         nonvar = Term.one()
@@ -769,7 +794,6 @@ class TestConstructiveDisjunification(unittest.TestCase):
         with self.assertRaises(Exception):
             chs.constructive_disunification(var1, var2)
 
-
     def test_var_var_prohibitedpartially1_positive(self):
         var1 = Variable('A')
         var2 = Variable('B')
@@ -803,7 +827,8 @@ class TestConstructiveDisjunification(unittest.TestCase):
 
         chs = CoinductiveHypothesisSet()
         actual = chs.constructive_disunification(fun1, fun2)
-        expected = (CoinductiveHypothesisSet(prohibited={Variable('X'): {Term.zero()}}), CoinductiveHypothesisSet(prohibited={Variable('Y'): {Term.one()}}),)
+        expected = (CoinductiveHypothesisSet(prohibited={Variable('X'): {Term.zero()}}),
+                    CoinductiveHypothesisSet(prohibited={Variable('Y'): {Term.one()}}),)
         self.assertEqual(expected, actual)
 
     def test_compound_compound_with_var_positive(self):
@@ -880,3 +905,69 @@ class TestConstructiveDisjunification(unittest.TestCase):
         actual = chs.constructive_disunification(term1, term2)
         expected = (CoinductiveHypothesisSet(),)
         self.assertEqual(expected, actual)
+
+
+class TestPropapagateDownToRule(unittest.TestCase):
+
+    def setUp(self) -> None:
+        CoinductiveHypothesisSet.unused_var_int = 0
+
+    def test_empty1(self):
+        r1 = NormalRule(p, (q,))
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.propagate_literal_down_to_rule(p, r1)
+        expected = CoinductiveHypothesisSet()
+        self.assertEqual(expected, actual)
+
+    def test_empty2(self):
+        r1 = NormalRule(p)
+        chs = CoinductiveHypothesisSet()
+        actual = chs.propagate_literal_down_to_rule(p, r1)
+        expected = CoinductiveHypothesisSet()
+        self.assertEqual(expected, actual)
+
+    def test_prop(self):
+        r1 = NormalRule(p, (q,))
+
+        chs = CoinductiveHypothesisSet({q_X}, {X: {Term.one()}}, {X: {Term.zero()}})
+        actual = chs.propagate_literal_down_to_rule(p, r1)
+        expected = CoinductiveHypothesisSet({q_X}, {X: {Term.one()}}, {X: {Term.zero()}})
+        self.assertEqual(expected, actual)
+
+    def test_bound_vars1(self):
+        r1 = NormalRule(p_X, (q,))
+        chs = CoinductiveHypothesisSet()
+        actual = chs.propagate_literal_down_to_rule(p_1, r1)
+        expected = CoinductiveHypothesisSet(set(), {X: {Term.one()}}, {X: set()})
+        self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+
+    def test_bound_vars2(self):
+        r1 = NormalRule(p_X, (q,))
+        chs = CoinductiveHypothesisSet(literals={a_X}, bindings=defaultdict(set, {X: {Term.zero()}}))
+        actual = chs.propagate_literal_down_to_rule(p_1, r1)
+        expected = CoinductiveHypothesisSet(literals={a_F0}, bindings={X: {Term.one()}, F0: {Term.zero()}},
+                                            prohibited={X: set()})
+        self.assertEqual(expected, actual)
+
+    def test_prohibited_vars1(self):
+        r1 = NormalRule(p_X, (q,))
+        chs = CoinductiveHypothesisSet(literals={a_X}, prohibited=defaultdict(set, {X: {Term.one()}}))
+        actual = chs.propagate_literal_down_to_rule(p_1, r1)
+        expected = CoinductiveHypothesisSet(literals={a_F0}, bindings=defaultdict(set, {X: {Term.one()}}), prohibited=defaultdict(set, {F0: {Term.one()}, X: set()}))
+        self.assertEqual(expected, actual)
+
+    def test_body_vars1(self):
+        r1 = NormalRule(p_Y, (a_X,))
+        chs = CoinductiveHypothesisSet(literals={a_X})
+        actual = chs.propagate_literal_down_to_rule(p_Y, r1)
+        expected = CoinductiveHypothesisSet(literals={a_F0})
+        self.assertEqual(expected, actual)
+
+    def test_body_vars2(self):
+        r1 = NormalRule(p_Y, (a_F0,))
+        chs = CoinductiveHypothesisSet(literals={a_F0})
+        actual = chs.propagate_literal_down_to_rule(p_Y, r1)
+        expected = CoinductiveHypothesisSet(literals={a_F1})
+        self.assertEqual(expected, actual)
+

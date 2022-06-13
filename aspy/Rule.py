@@ -21,9 +21,17 @@ class Rule(abc.ABC):
             return any(element.has_variable for element in self.body)
         return False
 
+    @property
+    def variables_in_head(self) -> Set[Variable]:
+        if self.head is None:
+            return set()
+        return self.head.variables
+
+    @property
     def variables_in_body(self) -> Set[Variable]:
         if self.body is not None:
             return set(variable for element in self.body for variable in element.variables)
+        return set()
 
     @property
     def has_variables(self) -> bool:
@@ -33,6 +41,10 @@ class Rule(abc.ABC):
     @abc.abstractmethod
     def head_signature(self) -> str:
         raise NotImplementedError
+
+    @property
+    def variables(self) -> Set[Variable]:
+        return self.variables_in_head | self.variables_in_body
 
     @abc.abstractmethod
     def variable_normal_form(self):

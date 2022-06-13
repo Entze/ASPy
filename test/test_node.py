@@ -409,22 +409,22 @@ class TestNodeMethods(unittest.TestCase):
         actual.expand(rule_map)
 
         expected = GoalNode(subject=goal,
-                            hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+                            hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
 
         child_lit_p_1 = LiteralNode(subject=p_1,
                                     parent=expected,
-                                    hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+                                    hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
         expected.children = [child_lit_p_1]
         child_rule_r1 = RuleNode(subject=r1,
                                  parent=child_lit_p_1,
-                                 hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+                                 hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
         child_lit_p_1.children = [child_rule_r1]
         child_lit_q_X = LiteralNode(subject=q_X,
                                     parent=child_rule_r1,
-                                    hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+                                    hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
         child_rule_r2 = RuleNode(subject=r2,
                                  parent=child_lit_q_X,
-                                 hypotheses=[CoinductiveHypothesisSet({p_1, p_X, q_1}, {X: {Term.one()}})])
+                                 hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
         child_lit_q_X.children = [child_rule_r2]
         child_success = Leaf.success(child_rule_r2)
         child_rule_r2.children = [child_success]

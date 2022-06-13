@@ -1,9 +1,10 @@
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Set, MutableMapping, Mapping, Sequence, TypeVar, Union
+from typing import Set, MutableMapping, Mapping, Sequence, TypeVar, Union, ClassVar
 
 from aspy.Literal import BasicLiteral
+from aspy.NormalRule import NormalRule
 from aspy.Symbol import Variable, Symbol, Term, Function, TopLevelSymbol
 
 Unifications = Mapping[Variable, Set[Symbol]]
@@ -23,6 +24,7 @@ class CoinductiveHypothesisSet:
     literals: Set[BasicLiteral] = field(default_factory=set)
     bindings: MutableUnifications = field(default_factory=empty_unifications)
     prohibited: MutableUnifications = field(default_factory=empty_unifications)
+    unused_var_int: ClassVar[int] = 0
 
     @property
     def is_consistent(self) -> bool:
@@ -30,6 +32,11 @@ class CoinductiveHypothesisSet:
             if -literal in self.literals:
                 return False
         return True
+
+    @property
+    def variables(self) -> Set[Variable]:
+        return self.bindings.keys() | self.prohibited.keys() | set(
+            variable for literal in self.literals for variable in literal.variables)
 
     def add_literal(self, literal: BasicLiteral) -> bool:
         self.literals.add(literal)
@@ -57,16 +64,18 @@ class CoinductiveHypothesisSet:
         if self.bindings:
             fmt += sep
         fmt += variable_sep.join(
-            variable_sep.join("{} = {}".format(variable, binding) for binding in bindings) for variable, bindings in
-            self.bindings.items())
+            variable_sep.join("{} = {}".format(variable, binding) for binding in bindings if bindings) for
+            variable, bindings in
+            self.bindings.items() if bindings)
         if self.bindings:
             fmt += sep
         fmt += "}" + sep + "{"
         if self.bindings:
             fmt += sep
         fmt += variable_sep.join(
-            variable_sep.join("{} /= {}".format(variable, binding) for binding in bindings) for variable, bindings in
-            self.prohibited.items())
+            variable_sep.join("{} /= {}".format(variable, binding) for binding in bindings if bindings) for
+            variable, bindings in
+            self.prohibited.items() if bindings)
         if self.bindings:
             fmt += sep
         fmt += "}"
@@ -205,6 +214,100 @@ class CoinductiveHypothesisSet:
             return CoinductiveHypothesisSet.__constructive_disunification_compound_compound(self, left, right)
         else:
             return self,
+
+    def free(self, variable: Variable) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.free_(variable)
+        return chs
+
+    def free_(self, variable: Variable):
+        self.bindings[variable].clear()
+        self.prohibited[variable].clear()
+
+    def get_free_var(self, prefix: str = "F") -> Variable:
+        variable = Variable("{}{}".format(prefix, self.unused_var_int))
+        self.unused_var_int += 1
+        while variable in self.variables:
+            variable = Variable("{}{}".format(prefix, self.unused_var_int))
+            self.unused_var_int += 1
+        return variable
+
+    def rename(self, old_variable: Variable, new_variable: Variable) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.rename_(old_variable, new_variable)
+        return chs
+
+    def renames(self, rename_map: Mapping[Variable, Variable]) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.renames_(rename_map)
+        return chs
+
+    def rename_(self, old_variable: Variable, new_variable: Variable):
+        literals_to_add = set()
+        literals_to_remove = set()
+        mapping = {old_variable: new_variable}
+        for literal in self.literals:
+            if old_variable in literal.variables:
+                literals_to_remove.add(literal)
+                literals_to_add.add(literal.substitute_variables(mapping))
+
+        self.literals.difference_update(literals_to_remove)
+        self.literals.update(literals_to_add)
+
+        if old_variable in self.bindings:
+            binds = self.bindings[old_variable]
+            del self.bindings[old_variable]
+            self.bindings[new_variable] = binds
+
+        if old_variable in self.prohibited:
+            prohibits = self.prohibited[old_variable]
+            del self.prohibited[old_variable]
+            self.prohibited[new_variable] = prohibits
+
+    def renames_(self, rename_map: Mapping[Variable, Variable]):
+        for old, new in rename_map.items():
+            self.rename_(old, new)
+
+    def propagate_literal_down_to_rule(self, literal: BasicLiteral,
+                                       rule: NormalRule) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.propagate_literal_down_to_rule_(literal, rule)
+        return chs
+
+    def propagate_literal_down_to_rule_(self, literal: BasicLiteral, rule: NormalRule):
+        to_rename = self.variables & rule.variables
+        if to_rename:
+            rename_map = {}
+            for var in to_rename:
+                rename_map[var] = self.get_free_var()
+            self.renames_(rename_map)
+
+        self.constructive_unification_(literal.atom.symbol, rule.head.atom.symbol)
+
+    def propagate_rule_down_to_literal(self, rule: NormalRule,
+                                       literal: BasicLiteral) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.propagate_rule_down_to_literal_(rule, literal)
+        return chs
+
+    def propagate_rule_down_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
+        pass
+
+    def propagate_literal_up_to_rule(self, literal: BasicLiteral, rule: NormalRule) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.propagate_literal_up_to_rule_(literal, rule)
+        return chs
+
+    def propagate_literal_up_to_rule_(self, literal: BasicLiteral, rule: NormalRule):
+        pass
+
+    def propagate_rule_up_to_literal(self, rule: NormalRule, literal: BasicLiteral) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.propagate_up_to_literal_(rule, literal)
+        return chs
+
+    def propagate_up_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
+        pass
 
     @staticmethod
     def __constructive_unification_var_non_var(chs: ForwardCoinductiveHypothesisSet,

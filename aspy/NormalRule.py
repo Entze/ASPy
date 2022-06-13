@@ -28,6 +28,7 @@ class NormalRule(Rule):
             return False
         return self.head.variables != set(variable for element in self.body for variable in element.variables)
 
+
     def __str__(self):
         if self.body:
             return "{} :- {}.".format(self.head, Rule.fmt_body(self.body))
