@@ -9,20 +9,26 @@ from aspy.NormalRule import NormalRule
 from aspy.Program import RuleMap
 from aspy.Symbol import Variable, Function, Term, IntegerConstant
 
-p = BasicLiteral.make_literal('p')
-
 X = Variable('X')
-p_X = BasicLiteral.make_literal('p', X)
-
-p_1 = BasicLiteral.make_literal('p', 1)
-
 Y = Variable('Y')
+F0 = Variable('F0')
+F1 = Variable('F1')
+F2 = Variable('F2')
+F3 = Variable('F3')
+
+p = BasicLiteral.make_literal('p')
+p_1 = BasicLiteral.make_literal('p', 1)
+p_X = BasicLiteral.make_literal('p', X)
 p_Y = BasicLiteral.make_literal('p', Y)
 
 q = BasicLiteral.make_literal('q')
+q_0 = BasicLiteral.make_literal('q', 0)
 q_1 = BasicLiteral.make_literal('q', 1)
 q_2 = BasicLiteral.make_literal('q', 2)
 q_X = BasicLiteral.make_literal('q', X)
+q_F0 = BasicLiteral.make_literal('q', F0)
+q_F1 = BasicLiteral.make_literal('q', F1)
+q_F2 = BasicLiteral.make_literal('q', F2)
 
 r = BasicLiteral.make_literal('r')
 s = BasicLiteral.make_literal('s')
@@ -557,4 +563,46 @@ class TestNodeMethods(unittest.TestCase):
         query.expand(rule_map)
         actual = query.answer_sets()
         expected = (CoinductiveHypothesisSet({-p_X, q, body_fails(1, (X,))}),)
+        self.assertEqual(expected, actual)
+
+    def test_pred_answer_sets_existential1(self):
+        r1 = NormalRule(p_Y, (q_X,))
+        r2 = NormalRule(q_0)
+        r3 = NormalRule(q_1)
+
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1]},
+            "q/1.": {"primal": [r2,r3]}
+        }
+
+        goal = Goal((p_X,))
+        query = GoalNode(subject=goal)
+        query.init()
+        query.expand(rule_map)
+        actual = query.answer_sets()
+        expected = (CoinductiveHypothesisSet({p_X, q_F2},
+                                             {F2:{Term.zero()}},
+                                             {F2: set()}), CoinductiveHypothesisSet({p_X, q_F2},
+                                                                                    {F2: {Term.one()}},
+                                                                                    {F2: set()}))
+        self.assertEqual(expected, actual)
+
+    def test_pred_answer_sets_existential2(self):
+        r1 = NormalRule(p_Y, (q_F0,))
+        r2 = NormalRule(q_0)
+        r3 = NormalRule(q_1)
+
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1]},
+            "q/1.": {"primal": [r2,r3]}
+        }
+
+        goal = Goal((p_X,))
+        query = GoalNode(subject=goal)
+        query.init()
+        query.expand(rule_map)
+        actual = query.answer_sets()
+        expected = (CoinductiveHypothesisSet({p_X, q_F0},
+                                             {F0: {Term.zero()}},
+                                             {F0: set()}), CoinductiveHypothesisSet({p_X, q_F0}, {F0:{Term.one()}}, {F0: set()}))
         self.assertEqual(expected, actual)

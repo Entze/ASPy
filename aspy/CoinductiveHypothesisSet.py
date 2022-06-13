@@ -56,6 +56,15 @@ class CoinductiveHypothesisSet:
     def is_negatively_constrained(self, variable: Variable) -> bool:
         return variable in self.prohibited and self.prohibited[variable]
 
+    def new_variables(self, literal: BasicLiteral):
+        if literal.has_variable:
+            rename_map = {}
+            for variable in literal.variables:
+                rename_map[variable] = self.get_free_var("L")
+            return literal.substitute_variables(rename_map)
+        else:
+            return literal
+
     def fmt(self, sep=' ', literal_sep=' ', variable_sep=' '):
         fmt = "{"
         if self.literals:
@@ -352,6 +361,18 @@ class CoinductiveHypothesisSet:
                 del self.bindings[variable]
             if variable in self.prohibited:
                 del self.prohibited[variable]
+        for binds in self.bindings.values():
+            obsolete_values = set()
+            for value in binds:
+                if value in to_remove or (isinstance(value, Variable) and value not in self.variables):
+                    obsolete_values.add(value)
+            binds.difference_update(obsolete_values)
+        for prohibits in self.prohibited.values():
+            obsolete_values = set()
+            for value in prohibits:
+                if value in to_remove or (isinstance(value, Variable) and value not in self.variables):
+                    obsolete_values.add(value)
+            prohibits.difference_update(obsolete_values)
         to_remove = set()
         for variable in self.prohibited:
             if variable not in self.literal_variables and variable not in literal.variables:
@@ -360,10 +381,34 @@ class CoinductiveHypothesisSet:
             if variable in self.prohibited:
                 del self.prohibited[variable]
 
+        for binds in self.bindings.values():
+            obsolete_values = set()
+            for value in binds:
+                if value in to_remove or (isinstance(value, Variable) and value not in self.variables):
+                    obsolete_values.add(value)
+            binds.difference_update(obsolete_values)
+        for prohibits in self.prohibited.values():
+            obsolete_values = set()
+            for value in prohibits:
+                if value in to_remove or (isinstance(value, Variable) and value not in self.variables):
+                    obsolete_values.add(value)
+            prohibits.difference_update(obsolete_values)
+
         body_literal = rule.body[literal_index]
         assert isinstance(body_literal, BasicLiteral)
 
+        to_rename = set()
+        for variable in self.variables:
+            if variable in body_literal.variables:
+                to_rename.add(variable)
+
         rename_map = {}
+        for variable in to_rename:
+            rename_map[variable] = self.get_free_var("F")
+
+        self.renames_(rename_map)
+        rename_map = {}
+
         for elem in (*self.literals, literal):
             if not isinstance(elem, BasicLiteral):
                 continue
@@ -437,7 +482,8 @@ class CoinductiveHypothesisSet:
                                                                                                     type(var1).__name__)
         assert isinstance(var2, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var2,
                                                                                                     type(var2).__name__)
-        chs.prohibited[var1].update(chs.prohibited[var2]), chs.prohibited[var2].update(chs.prohibited[var1])
+        chs.prohibited[var1].update(chs.prohibited[var2])
+        chs.prohibited[var2].update(chs.prohibited[var1])
         chs.bindings[var1].add(var2)
         chs.bindings[var2].add(var1)
         return chs,

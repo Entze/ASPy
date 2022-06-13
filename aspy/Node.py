@@ -149,9 +149,15 @@ class RuleNode(Node):
         self.children = []
         for literal_index,clause_element in enumerate(self.subject.body):
             if isinstance(clause_element, BasicLiteral):
+                if clause_element.has_variable and self.hypotheses:
+                    literal = self.hypotheses[0].new_variables(clause_element)
+                    while any(literal in hypothesis for hypothesis in self.hypotheses):
+                        literal = self.hypotheses[0].new_variables(clause_element)
+                else:
+                    literal = clause_element
                 for hypothesis in self.hypotheses:
-                    hypothesis.propagate_rule_down_to_literal_(self.subject, literal_index, clause_element)
-                child = LiteralNode(subject=clause_element,
+                    hypothesis.propagate_rule_down_to_literal_(self.subject, literal_index, literal)
+                child = LiteralNode(subject=literal,
                                     parent=self,
                                     hypotheses=self.hypotheses)
                 child.expand(rule_map)
