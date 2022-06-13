@@ -10,7 +10,7 @@ ForwardDirective = TypeVar('ForwardDirective', bound='Directive')
 @dataclass(order=True, frozen=True)
 class Directive(HeadClauseElement):
     name: str
-    arguments: Sequence[Union[ForwardDirective, Symbol]] = field(default_factory=tuple)
+    arguments: Sequence[Union[Sequence[Symbol], Symbol]] = field(default_factory=tuple)
 
     @property
     def has_variable(self) -> bool:
@@ -68,7 +68,7 @@ class Directive(HeadClauseElement):
         return Directive(self.name, arguments)
 
     @staticmethod
-    def forall(var: Variable, goal: Union[ForwardDirective, Symbol]):
+    def forall(var: Sequence[Variable], goal: Union[Symbol]):
         return Directive('forall', (var, goal,))
 
     @staticmethod

@@ -1,7 +1,7 @@
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Set, MutableMapping, Mapping, Sequence, TypeVar, Union, ClassVar
+from typing import Set, MutableMapping, Mapping, Sequence, TypeVar, Union, ClassVar, Iterable
 
 from aspy.Literal import BasicLiteral
 from aspy.NormalRule import NormalRule
@@ -31,16 +31,18 @@ class CoinductiveHypothesisSet:
         for literal in self.literals:
             if -literal in self.literals:
                 return False
-        for variable,binds in self.bindings.items():
+        for variable, binds in self.bindings.items():
             if sum(1 for elem in binds if not isinstance(elem, Variable)) > 1:
                 return False
-            prohibts = self.prohibited[variable]
-            if not binds.isdisjoint(prohibts):
-                return False
-            for value in binds:
-                if isinstance(value, Variable):
-                    if sum(1 for elem in (binds | self.bindings[value]) if not isinstance(elem, Variable)) > 1:
-                        return False
+            if variable in self.prohibited:
+                prohibits = self.prohibited[variable]
+                if not binds.isdisjoint(prohibits):
+                    return False
+                for value in binds:
+                    if value in self.bindings:
+                        if isinstance(value, Variable):
+                            if sum(1 for elem in (binds | self.bindings[value]) if not isinstance(elem, Variable)) > 1:
+                                return False
         return True
 
     @property
@@ -57,7 +59,10 @@ class CoinductiveHypothesisSet:
 
     def __contains__(self, item):
         if isinstance(item, BasicLiteral):
-            return item in self.literals
+            if item.has_variable:
+                pass
+            else:
+                return item in self.literals
         return False
 
     def __str__(self):
@@ -65,6 +70,9 @@ class CoinductiveHypothesisSet:
 
     def is_negatively_constrained(self, variable: Variable) -> bool:
         return variable in self.prohibited and self.prohibited[variable]
+
+    def is_bound(self, variable: Variable) -> bool:
+        return variable in self.bindings and self.bindings[variable]
 
     def new_variables(self, literal: BasicLiteral):
         if literal.has_variable:
@@ -245,6 +253,15 @@ class CoinductiveHypothesisSet:
     def free_(self, variable: Variable):
         self.bindings[variable].clear()
         self.prohibited[variable].clear()
+
+    def free_all(self, variables: Sequence[Variable]) -> ForwardCoinductiveHypothesisSet:
+        chs = deepcopy(self)
+        chs.free_all_(variables)
+        return chs
+
+    def free_all_(self, variables: Iterable[Variable]):
+        for variable in variables:
+            self.free_(variable)
 
     def get_free_var(self, prefix: str = "F") -> Variable:
         variable = Variable("{}{}".format(prefix, self.unused_var_int))

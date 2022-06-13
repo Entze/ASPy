@@ -1,7 +1,8 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Union, TypeVar, Optional, Sequence, MutableSequence
+from typing import Union, TypeVar, Optional, Sequence, MutableSequence, Tuple
 
+from aspy.Atom import Atom
 from aspy.ClauseElement import ClauseElement
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
 from aspy.Comparison import Comparison, ComparisonOperator
@@ -10,6 +11,7 @@ from aspy.Goal import Goal
 from aspy.Literal import BasicLiteral
 from aspy.NormalRule import NormalRule
 from aspy.Program import RuleMap
+from aspy.Symbol import Variable, TopLevelSymbol
 
 ForwardBaseNode = TypeVar('ForwardBaseNode', bound='BaseNode')
 
@@ -170,7 +172,7 @@ class RuleNode(Node):
                 if clause_element.comparison is ComparisonOperator.Equal:
                     child = UnificationNode(clause_element, hypotheses=self.hypotheses)
                 elif clause_element.comparison is ComparisonOperator.NotEqual:
-                    child = DisunificationNode(clause_element)
+                    child = DisunificationNode(clause_element, hypotheses=self.hypotheses)
                 else:
                     assert False, "Unexpected ComparisonOperator {}.".format(clause_element.comparison)
                 child.expand(rule_map)
@@ -245,6 +247,7 @@ class LiteralNode(Node):
         for hypothesis in self.hypotheses:
             hypothesis.add_literal(self.subject)
 
+    # TODO: Exact Match & Predicate case
     def coinductive_hypotheses_check(self):
         if self.hypotheses and all(self.subject in hypothesis for hypothesis in self.hypotheses):
             child = Leaf.success(self)
@@ -255,9 +258,11 @@ class LiteralNode(Node):
             self.children.append(child)
             return True
 
+        if self.is_root:
+            return False
         negations = 0
         node: LiteralNode = self
-        while not node.parent.is_root:
+        while not isinstance(node, ForallNode) and not node.parent.is_root:
             node: LiteralNode = node.parent.parent
             if node.subject == self.subject:
                 if not self.subject.is_pos or negations > 0:
@@ -271,6 +276,7 @@ class LiteralNode(Node):
         return False
 
 
+@dataclass(order=True)
 class UnificationNode(Node):
     subject: Comparison = field(default_factory=Comparison)
 
@@ -297,6 +303,7 @@ class UnificationNode(Node):
         self.hypotheses = unifications
 
 
+@dataclass(order=True)
 class DisunificationNode(Node):
     subject: Comparison = field(default_factory=Comparison)
 
@@ -321,3 +328,88 @@ class DisunificationNode(Node):
         self.children.append(child)
 
         self.hypotheses = unifications
+
+
+@dataclass(order=True)
+class ForallNode(Node):
+    subject: Directive = field(default=Directive('forall'))
+
+    @property
+    def is_success(self) -> bool:
+        return self.is_expanded and all(child.is_success for child in self.children[1:])
+
+    def expand(self, rule_map: Optional[RuleMap] = None):
+        if self.is_expanded:
+            return
+        self.children = []
+        if not self.hypotheses:
+            return
+        variables = tuple(self.subject.arguments[0])
+        new_variables = set()
+        rename_map = {}
+        for variable in variables:
+            new_variable = self.hypotheses[0].get_free_var('A')
+            new_variables.add(new_variable)
+            rename_map[variable] = new_variable
+        hypotheses = []
+        for hypothesis in self.hypotheses:
+            hypotheses.append(hypothesis.free_all(variables))
+
+        symbol = self.subject.arguments[1]
+        assert isinstance(symbol, TopLevelSymbol)
+        literal = BasicLiteral(atom=Atom(symbol.substitute_variables(rename_map)))
+
+        query = Goal((literal,))
+        child = GoalNode(subject=query, parent=self, hypotheses=hypotheses)
+        child.expand(rule_map)
+        self.children.append(child)
+
+        if not child.is_success:
+            child = Leaf.fail(self)
+            self.children.append(child)
+            return
+
+        result = []
+        for hypothesis in child.hypotheses:
+            if not hypothesis.is_consistent:
+                continue
+            bound = False
+            for new_variable in new_variables:
+                bound = bound or (hypothesis.is_bound(new_variable) and sum(
+                    1 for value in hypothesis.bindings[new_variable] if not isinstance(value, Variable)))
+            if bound:
+                continue
+            result.append(hypothesis)
+
+        if not result:
+            child = Leaf.fail(self)
+            self.children.append(child)
+            return
+
+        check = []
+        for hypothesis in result:
+            prohibited = False
+            for new_variable in new_variables:
+                prohibited = prohibited or hypothesis.is_negatively_constrained(new_variable)
+            if prohibited:
+                check.append(hypothesis)
+
+        for new_variable in new_variables:
+            work = []
+            for hypothesis in check:
+                for prohibited in hypothesis.prohibited[new_variable]:
+                    new_hypothesis = deepcopy(hypothesis)
+                    new_hypothesis.free_all_(new_variables)
+                    new_hypothesis.bindings[new_variable] = {prohibited}
+                    work.append(new_hypothesis)
+            if work:
+                child = GoalNode(Goal((literal,)),
+                                 parent=self,
+                                 hypotheses=work)
+                child.expand(rule_map)
+                self.children.append(child)
+                if not child.is_success:
+                    break
+
+        for hypothesis in self.hypotheses:
+            hypothesis.add_literal(literal)

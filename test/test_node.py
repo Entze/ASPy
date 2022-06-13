@@ -3,9 +3,10 @@ from typing import cast, Sequence
 
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
 from aspy.Comparison import Comparison, ComparisonOperator
+from aspy.Directive import Directive
 from aspy.Goal import Goal
 from aspy.Literal import BasicLiteral
-from aspy.Node import RuleNode, LiteralNode, Leaf, GoalNode, UnificationNode
+from aspy.Node import RuleNode, LiteralNode, Leaf, GoalNode, UnificationNode, ForallNode, DisunificationNode
 from aspy.NormalRule import NormalRule
 from aspy.Program import RuleMap
 from aspy.Symbol import Variable, Function, Term, IntegerConstant
@@ -16,6 +17,7 @@ F0 = Variable('F0')
 F1 = Variable('F1')
 F2 = Variable('F2')
 F3 = Variable('F3')
+A0 = Variable('A0')
 
 p = BasicLiteral.make_literal('p')
 p_1 = BasicLiteral.make_literal('p', 1)
@@ -30,6 +32,7 @@ q_X = BasicLiteral.make_literal('q', X)
 q_F0 = BasicLiteral.make_literal('q', F0)
 q_F1 = BasicLiteral.make_literal('q', F1)
 q_F2 = BasicLiteral.make_literal('q', F2)
+q_A0 = BasicLiteral.make_literal('q', A0)
 
 r = BasicLiteral.make_literal('r')
 s = BasicLiteral.make_literal('s')
@@ -616,9 +619,9 @@ class TestNodeMethods(unittest.TestCase):
         r3 = NormalRule(q_1)
         r4 = NormalRule(q_2)
         r5 = NormalRule(p_1)
-        rule_map : RuleMap = {
+        rule_map: RuleMap = {
             "q/0.": {"primal": [r1]},
-            "q/1.": {"primal": [r2,r3,r4]},
+            "q/1.": {"primal": [r2, r3, r4]},
             "p/1.": {"primal": [r5]},
         }
 
@@ -627,8 +630,10 @@ class TestNodeMethods(unittest.TestCase):
         query.init()
         query.expand(rule_map)
         actual = query.answer_sets()
-        expected = (CoinductiveHypothesisSet({q, q_X, p_Y}, {X: {Term.one(), Y}, Y: {Term.one(), X}}, {X: set(), Y: set()}),)
+        expected = (
+            CoinductiveHypothesisSet({q, q_X, p_Y}, {X: {Term.one(), Y}, Y: {Term.one(), X}}, {X: set(), Y: set()}),)
         self.assertEqual(actual, expected, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+
 
 class TestUnificationNode(unittest.TestCase):
 
@@ -637,12 +642,181 @@ class TestUnificationNode(unittest.TestCase):
         B = Variable('B')
         comp = Comparison(A, ComparisonOperator.Equal, B)
 
-        chs = [CoinductiveHypothesisSet(prohibited={A: {Term.zero()}, B:set()}),
-               CoinductiveHypothesisSet(prohibited={A: {Term.one()}, B:set()})]
+        chs = [CoinductiveHypothesisSet(prohibited={A: {Term.zero()}, B: set()}),
+               CoinductiveHypothesisSet(prohibited={A: {Term.one()}, B: set()})]
         node = UnificationNode(subject=comp, hypotheses=chs)
         node.expand()
         actual = node.hypotheses
         expected = [
-        CoinductiveHypothesisSet(bindings={A: {B}, B: {A}}, prohibited={A: {Term.zero()}, B: {Term.zero()}}),
-        CoinductiveHypothesisSet(bindings={A: {B}, B: {A}}, prohibited={A: {Term.one()}, B: {Term.one()}})]
+            CoinductiveHypothesisSet(bindings={A: {B}, B: {A}}, prohibited={A: {Term.zero()}, B: {Term.zero()}}),
+            CoinductiveHypothesisSet(bindings={A: {B}, B: {A}}, prohibited={A: {Term.one()}, B: {Term.one()}})]
         self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+
+
+# noinspection DuplicatedCode
+class TestForallNode(unittest.TestCase):
+
+    def test_simple1(self):
+        r1 = NormalRule(r, (Directive.forall((X,), q_X.atom.symbol)))
+        r2 = NormalRule(q_X)
+
+        rule_map: RuleMap = {
+            "r/0.": {"primal": [r1]},
+            "q/1.": {"primal": [r2]}
+        }
+
+        actual = ForallNode(subject=Directive.forall((X,), q_X.atom.symbol))
+        actual.init()
+        actual.expand(rule_map)
+
+        expected = ForallNode(subject=Directive.forall((X,), q_X.atom.symbol),
+                              hypotheses=[CoinductiveHypothesisSet({q_A0})])
+        query_q_X_lit = GoalNode(subject=Goal((q_A0,)),
+                                 parent=expected,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0})])
+        expected.children = [query_q_X_lit]
+        child_q_X_lit = LiteralNode(subject=q_A0,
+                                    parent=query_q_X_lit,
+                                    hypotheses=[CoinductiveHypothesisSet({q_A0})])
+        query_q_X_lit.children = [child_q_X_lit]
+        child_r2_rule = RuleNode(subject=r2,
+                                 parent=child_q_X_lit,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0})])
+        child_q_X_lit.children = [child_r2_rule]
+
+        child_success = Leaf.success(child_r2_rule)
+        child_r2_rule.children = [child_success]
+
+        self.assertEqual(expected, actual)
+
+    def test_simple2(self):
+        r1 = NormalRule(r, (Directive.forall((X,), q_X.atom.symbol)))
+        r2 = NormalRule(q_X, (Comparison(X, ComparisonOperator.NotEqual, Term.one()),))
+        r3 = NormalRule(q_1)
+
+        rule_map: RuleMap = {
+            "r/0.": {"primal": [r1]},
+            "q/1.": {"primal": [r2, r3]}
+        }
+
+        actual = ForallNode(subject=Directive.forall((X,), q_X.atom.symbol))
+        actual.init()
+        actual.expand(rule_map)
+
+        expected = ForallNode(subject=Directive.forall((X,), q_X.atom.symbol),
+                              hypotheses=[CoinductiveHypothesisSet({q_A0})])
+
+        query_q_X_lit = GoalNode(subject=Goal((q_A0,)),
+                                 parent=expected,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0}, prohibited={A0: {Term.one()}}),
+                                             CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}}),
+                                             ])
+
+        child_q_X_lit = LiteralNode(subject=q_A0,
+                                    parent=query_q_X_lit,
+                                    hypotheses=[CoinductiveHypothesisSet({q_A0}, prohibited={A0: {Term.one()}}),
+                                                CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}}),
+                                                ])
+        query_q_X_lit.children = [child_q_X_lit]
+
+        child_r2_rule = RuleNode(subject=r2,
+                                 parent=child_q_X_lit,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0}, prohibited={A0: {Term.one()}}),
+                                             CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}}),
+                                             ])
+        child_r3_rule = RuleNode(subject=r3,
+                                 parent=child_q_X_lit,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0}, prohibited={A0: {Term.one()}}),
+                                             CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}}),
+                                             ]
+                                 )
+        child_q_X_lit.children = [child_r2_rule, child_r3_rule]
+
+        child_disunification = DisunificationNode(subject=Comparison(X, ComparisonOperator.NotEqual, Term.one()),
+                                                  parent=child_r2_rule,
+                                                  hypotheses=[
+                                                      CoinductiveHypothesisSet({q_A0}, prohibited={A0: {Term.one()}}),
+                                                      CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}}),
+                                                  ]
+                                                  )
+
+        child_r2_rule.children = [child_disunification]
+        child_success1 = Leaf.success(child_disunification)
+        child_disunification.children = [child_success1]
+
+        child_success2 = Leaf.success(child_r3_rule)
+        child_r3_rule.children = [child_success2]
+
+        query_q_constrained = GoalNode(subject=Goal((q_A0,)),
+                                       parent=expected,
+                                       hypotheses=[
+                                           CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}})
+                                       ])
+
+        child_q_X_constrained = LiteralNode(subject=q_A0,
+                                            parent=query_q_constrained,
+                                            hypotheses=[
+                                                CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}})
+                                            ])
+        query_q_constrained.children = [child_q_X_constrained]
+        expected.children = [query_q_X_lit, query_q_constrained]
+        child_r2_constrained = RuleNode(subject=r2,
+                                        parent=child_q_X_constrained,
+                                        hypotheses=[])
+
+        query_q_constrained.children = [child_r2_constrained]
+
+        child_disunification_constrained = DisunificationNode(
+            subject=Comparison(X, ComparisonOperator.NotEqual, Term.one()),
+            parent=child_r2_constrained,
+            hypotheses=[])
+        child_r2_constrained.children = [child_disunification_constrained]
+        disunification_fail = Leaf.fail(child_disunification_constrained)
+        child_disunification_constrained.children = [disunification_fail]
+
+        child_r3_constrained = RuleNode(subject=r3,
+                                        parent=child_q_X_constrained,
+                                        hypotheses=[CoinductiveHypothesisSet({q_A0}, prohibited={A0: {Term.one()}}),
+                                                    CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}}),
+                                                    ]
+                                        )
+        child_q_X_constrained.children = [child_r2_constrained, child_r3_constrained]
+
+        child_success3 = Leaf.success(child_r3_constrained)
+        child_r3_constrained.children = [child_success3]
+
+        self.assertEqual(expected, actual)
+
+    def test_simple3(self):
+        r1 = NormalRule(r, (Directive.forall((X,), q_X.atom.symbol)))
+        r2 = NormalRule(q_1)
+
+        rule_map: RuleMap = {
+            "r/0.": {"primal": [r1]},
+            "q/1.": {"primal": [r2]}
+        }
+
+        actual = ForallNode(subject=Directive.forall((X,), q_X.atom.symbol))
+        actual.init()
+        actual.expand(rule_map)
+
+        expected = ForallNode(subject=Directive.forall((X,), q_X.atom.symbol),
+                              hypotheses=[CoinductiveHypothesisSet()])
+        query_q_X_lit = GoalNode(subject=Goal((q_A0,)),
+                                 parent=expected,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}})])
+        child_q_X_lit = LiteralNode(subject=q_A0,
+                                    parent=query_q_X_lit,
+                                    hypotheses=[CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}})])
+        query_q_X_lit.children = [child_q_X_lit]
+        child_r2_rule = RuleNode(subject=r2,
+                                 parent=child_q_X_lit,
+                                 hypotheses=[CoinductiveHypothesisSet({q_A0}, bindings={A0: {Term.one()}})])
+        child_q_X_lit.children = [child_r2_rule]
+
+        child_success = Leaf.success(child_r2_rule)
+        child_r2_rule.children = [child_success]
+        child_fail = Leaf.fail(expected)
+        expected.children = [query_q_X_lit, child_fail]
+
+        self.assertEqual(expected, actual)

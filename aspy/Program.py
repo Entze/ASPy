@@ -291,8 +291,7 @@ class Program:
                     ))
                     __bf_n_ = BasicLiteral(atom=Atom(func__bf_n_))
                     dual_body_literal = func__bf_n_
-                    for existential in existentials:
-                        dual_body_literal = Directive.forall(existential, dual_body_literal)
+                    dual_body_literal = Directive.forall(tuple(existentials), dual_body_literal)
                     if not existentials:
                         dual_body_literal = __bf_n_
                     dual_body.append(dual_body_literal)
