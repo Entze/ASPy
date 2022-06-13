@@ -610,6 +610,25 @@ class TestNodeMethods(unittest.TestCase):
                     CoinductiveHypothesisSet({p_X, q_F0}, {F0: {Term.one()}}, {F0: set()}))
         self.assertEqual(expected, actual)
 
+    def test_pred_answer_sets_unification(self):
+        r1 = NormalRule(q, (q_X, p_Y, Comparison(X, ComparisonOperator.Equal, Y)))
+        r2 = NormalRule(q_0)
+        r3 = NormalRule(q_1)
+        r4 = NormalRule(q_2)
+        r5 = NormalRule(p_1)
+        rule_map : RuleMap = {
+            "q/0.": {"primal": [r1]},
+            "q/1.": {"primal": [r2,r3,r4]},
+            "p/1.": {"primal": [r5]},
+        }
+
+        goal = Goal((q,))
+        query = GoalNode(subject=goal)
+        query.init()
+        query.expand(rule_map)
+        actual = query.answer_sets()
+        expected = (CoinductiveHypothesisSet({q, q_X, p_Y}, {X: {Term.one(), Y}, Y: {Term.one(), X}}, {X: set(), Y: set()}),)
+        self.assertEqual(actual, expected, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
 
 class TestUnificationNode(unittest.TestCase):
 

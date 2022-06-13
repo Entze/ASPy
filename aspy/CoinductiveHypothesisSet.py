@@ -31,6 +31,16 @@ class CoinductiveHypothesisSet:
         for literal in self.literals:
             if -literal in self.literals:
                 return False
+        for variable,binds in self.bindings.items():
+            if sum(1 for elem in binds if not isinstance(elem, Variable)) > 1:
+                return False
+            prohibts = self.prohibited[variable]
+            if not binds.isdisjoint(prohibts):
+                return False
+            for value in binds:
+                if isinstance(value, Variable):
+                    if sum(1 for elem in (binds | self.bindings[value]) if not isinstance(elem, Variable)) > 1:
+                        return False
         return True
 
     @property

@@ -4,7 +4,7 @@ from typing import Union, TypeVar, Optional, Sequence, MutableSequence
 
 from aspy.ClauseElement import ClauseElement
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
-from aspy.Comparison import Comparison
+from aspy.Comparison import Comparison, ComparisonOperator
 from aspy.Directive import Directive
 from aspy.Goal import Goal
 from aspy.Literal import BasicLiteral
@@ -166,8 +166,19 @@ class RuleNode(Node):
                 for hypothesis in child.hypotheses:
                     hypothesis.propagate_literal_up_to_rule_(child.subject, literal_index, self.subject)
                 self.hypotheses = child.hypotheses
+            elif isinstance(clause_element, Comparison):
+                if clause_element.comparison is ComparisonOperator.Equal:
+                    child = UnificationNode(clause_element, hypotheses=self.hypotheses)
+                elif clause_element.comparison is ComparisonOperator.NotEqual:
+                    child = DisunificationNode(clause_element)
+                else:
+                    assert False, "Unexpected ComparisonOperator {}.".format(clause_element.comparison)
+                child.expand(rule_map)
+                self.children.append(child)
+                self.hypotheses = child.hypotheses
             else:
-                assert False, "Unexpected Node {} with type {}.".format(clause_element, type(clause_element).__name__)
+                assert False, "Unexpected ClauseElement {} with type {}.".format(clause_element,
+                                                                                 type(clause_element).__name__)
         if not self.subject.body:
             child = Leaf.success(self)
             self.children.append(child)
@@ -178,7 +189,12 @@ class GoalNode(RuleNode):
     subject: Goal = field(default_factory=Goal)
 
     def answer_sets(self) -> Sequence[CoinductiveHypothesisSet]:
-        return tuple(hypothesis for hypothesis in self.hypotheses if hypothesis.is_consistent)
+        answer_sets = []
+        for hypothesis in self.hypotheses:
+            if hypothesis.is_consistent:
+                if hypothesis not in answer_sets:
+                    answer_sets.append(hypothesis)
+        return tuple(answer_sets)
 
 
 @dataclass(order=True)
@@ -280,5 +296,28 @@ class UnificationNode(Node):
 
         self.hypotheses = unifications
 
-class Disjunification(Node):
-    pass
+
+class DisunificationNode(Node):
+    subject: Comparison = field(default_factory=Comparison)
+
+    @property
+    def is_success(self) -> bool:
+        return self.is_expanded and any(child.is_success for child in self.children)
+
+    def expand(self, rule_map: Optional[RuleMap] = None):
+        if self.is_expanded:
+            return
+        self.children = []
+
+        unifications = []
+        for hypothesis in self.hypotheses:
+            unifies = hypothesis.constructive_disunification(self.subject.left, self.subject.right)
+            unifications.extend(unifies)
+
+        if unifications:
+            child = Leaf.success(self)
+        else:
+            child = Leaf.fail(self)
+        self.children.append(child)
+
+        self.hypotheses = unifications
