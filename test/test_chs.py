@@ -434,7 +434,216 @@ class TestConstructiveUnification(unittest.TestCase):
 
 
 class TestDisunifies(unittest.TestCase):
-    pass
+
+    def test_negvar_nonvar_empty_positive(self):
+        negvar = Variable('A')
+        nonvar = Term.one()
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: set()})
+        actual = chs.disunifies(negvar, nonvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_negvar_term_positive(self):
+        negvar = Variable('A')
+        nonvar = Term.one()
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: {nonvar}})
+        actual = chs.disunifies(negvar, nonvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_term_negvar_positive(self):
+        negvar = Variable('A')
+        nonvar = Term.one()
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: {nonvar}})
+        actual = chs.disunifies(nonvar, negvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_negvar_function_positive(self):
+        negvar = Variable('A')
+        nonvar = Function('a')
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: {nonvar}})
+        actual = chs.disunifies(negvar, nonvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_negvar_function_compound_positive(self):
+        negvar = Variable('A')
+        var = Variable('B')
+        nonvar = Function('a', (var,))
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: {nonvar}, var: {Term.one()}})
+        actual = chs.disunifies(negvar, nonvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_negvar_nonvar_positive(self):
+        negvar = Variable('A')
+        nonvar = Term.one()
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: {Term.zero()}})
+        actual = chs.disunifies(negvar, nonvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_nonvar_negvar_positive(self):
+        negvar = Variable('A')
+        nonvar = Term.one()
+
+        chs = CoinductiveHypothesisSet(prohibited={negvar: {Term.zero()}})
+        actual = chs.disunifies(nonvar, negvar)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_var_var_positive(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(var1, var2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_var_var_bound_positive(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet(bindings={var1: {Term.zero()}, var2: {Term.one()}})
+        actual = chs.disunifies(var1, var2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_var_var_partiallybound1_positive(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet(bindings={var1: {Term.zero()}, var2: set()})
+        actual = chs.disunifies(var1, var2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_var_var_partiallybound2_positive(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet(bindings={var2: {Term.zero()}, var1: set()})
+        actual = chs.disunifies(var1, var2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_var_var_prohibited_error(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet(prohibited={var1: {Term.zero()}, var2: {Term.one()}})
+        with self.assertRaises(Exception):
+            chs.disunifies(var1, var2)
+
+    def test_var_var_prohibitedpartially1_positive(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet(prohibited={var1: {Term.zero()}})
+        actual = chs.disunifies(var1, var2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_var_var_prohibitedpartially2_positive(self):
+        var1 = Variable('A')
+        var2 = Variable('B')
+
+        chs = CoinductiveHypothesisSet(prohibited={var2: {Term.zero()}})
+        actual = chs.disunifies(var1, var2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_negative(self):
+        fun1 = Function('a', (Term.one(), Function('b', (Function('c'), Term.zero()))))
+        fun2 = Function('a', (Term.one(), Function('b', (Function('c'), Term.zero()))))
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(fun1, fun2)
+        expected = False
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_with_var_positive(self):
+        var = Variable('A')
+        fun1 = Function('a', (Term.one(), Function('b', (Function('c'), Term.zero()))))
+        fun2 = Function('a', (Term.one(), Function('b', (var, Term.zero()))))
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(fun1, fun2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_mismatching_args_positive(self):
+        fun1 = Function('a', (Term.one(),))
+        fun2 = Function('a', (Term.zero(),))
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(fun1, fun2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_mismatching_arity_positive(self):
+        fun1 = Function('a', (Term.one(),))
+        fun2 = Function('a', (Term.zero(), Term.one()))
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(fun1, fun2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_mismatching_name_positive(self):
+        fun1 = Function('a', (Term.one(),))
+        fun2 = Function('b', (Term.one(),))
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(fun1, fun2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_mismatching_var_positive(self):
+        var = Variable('A')
+        fun1 = Function('a', (var,))
+        fun2 = Function('a', (Term.one(),))
+
+        chs = CoinductiveHypothesisSet(prohibited={var: {Term.one()}})
+        actual = chs.disunifies(fun1, fun2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_compound_compound_mismatching_var_reversed_positive(self):
+        var = Variable('A')
+        fun1 = Function('a', (Term.one(),))
+        fun2 = Function('a', (var,))
+
+        chs = CoinductiveHypothesisSet(prohibited={var: {Term.one()}})
+        actual = chs.disunifies(fun1, fun2)
+        expected = True
+        self.assertEqual(expected, actual)
+
+    def test_term_term_negative(self):
+        term1 = Term.zero()
+        term2 = Term.zero()
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(term1, term2)
+        expected = False
+        self.assertEqual(expected, actual)
+
+    def test_term_term_positive(self):
+        term1 = Term.zero()
+        term2 = Term.one()
+
+        chs = CoinductiveHypothesisSet()
+        actual = chs.disunifies(term1, term2)
+        expected = True
+        self.assertEqual(expected, actual)
 
 
 class TestConstructiveDisjunification(unittest.TestCase):

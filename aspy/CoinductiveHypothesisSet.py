@@ -43,6 +43,9 @@ class CoinductiveHypothesisSet:
     def __str__(self):
         return self.fmt()
 
+    def is_negatively_constrained(self, variable: Variable) -> bool:
+        return variable in self.prohibited and self.prohibited[variable]
+
     def fmt(self, sep=' ', literal_sep=' ', variable_sep=' '):
         fmt = "{"
         if self.literals:
@@ -113,6 +116,52 @@ class CoinductiveHypothesisSet:
         return fun1.match(fun2) and all(
             self.unifies(fun1.function_arguments[i], fun2.function_arguments[i]) for i in range(fun1.arity))
 
+    def disunifies(self, left: Symbol, right: Symbol) -> bool:
+        if left == right:
+            return False
+        elif isinstance(left, Variable) ^ isinstance(right, Variable):
+            if isinstance(left, Variable) and isinstance(right, NonVariable):
+                return self.__disunifies_var_non_var(left, right)
+            else:
+                assert isinstance(right, Variable) and isinstance(left,
+                                                                  NonVariable), "Unknown Symbol {} of type {}.".format(
+                    left, type(left).__name__)
+                return self.__disunifies_var_non_var(right, left)
+        elif isinstance(left, Variable) and isinstance(right, Variable):
+            return self.__disunifies_var_var(left, right)
+        elif isinstance(left, TopLevelSymbol) and isinstance(right, TopLevelSymbol):
+            return self.__disunifies_compound_compound(left, right)
+        else:
+            return True
+
+    def __disunifies_var_non_var(self, var: Variable, non_var: NonVariable) -> bool:
+        assert isinstance(var, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var,
+                                                                                                   type(var).__name__)
+        assert isinstance(non_var, NonVariable), "Symbol {} has to be a NonVariable, but is type {}.".format(non_var,
+                                                                                                             type(
+                                                                                                                 non_var).__name__)
+        return True
+
+    def __disunifies_var_var(self, var1: Variable, var2: Variable) -> bool:
+        assert isinstance(var1, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var1,
+                                                                                                    type(var1).__name__)
+        assert isinstance(var2, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var2,
+                                                                                                    type(var2).__name__)
+        if self.is_negatively_constrained(var1) and self.is_negatively_constrained(var2):
+            raise Exception("Disunification of two negatively constrained variables is not defined.")
+        return self.bindings[var1].isdisjoint(self.bindings[var2])
+
+    def __disunifies_compound_compound(self, fun1: TopLevelSymbol, fun2: TopLevelSymbol) -> bool:
+        assert isinstance(fun1, TopLevelSymbol), "Symbol {} has to be a TopLevelSymbol, but is type {}.".format(fun1,
+                                                                                                                type(
+                                                                                                                    fun1).__name__)
+        assert isinstance(fun2, TopLevelSymbol), "Symbol {} has to be a TopLevelSymbol, but is type {}.".format(fun2,
+                                                                                                                type(
+                                                                                                                    fun2).__name__)
+        if not fun1.match(fun2):
+            return True
+        return any(self.disunifies(fun1.function_arguments[i], fun2.function_arguments[i]) for i in range(fun1.arity))
+
     def constructive_unification(self, left: Symbol, right: Symbol) -> Sequence[ForwardCoinductiveHypothesisSet]:
         chs = deepcopy(self)
         return chs.constructive_unification_(left, right)
@@ -134,6 +183,13 @@ class CoinductiveHypothesisSet:
             return CoinductiveHypothesisSet.__constructive_unification_compound_compound(self, left, right)
         else:
             return ()
+
+    def constructive_disunification(self, left: Symbol, right: Symbol) -> Sequence[ForwardCoinductiveHypothesisSet]:
+        chs = deepcopy(self)
+        return chs.constructive_disunification_(left, right)
+
+    def constructive_disunification_(self, left: Symbol, right: Symbol) -> Sequence[ForwardCoinductiveHypothesisSet]:
+        pass
 
     @staticmethod
     def __constructive_unification_var_non_var(chs: ForwardCoinductiveHypothesisSet,

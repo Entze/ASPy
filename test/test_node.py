@@ -429,4 +429,4 @@ class TestNodeMethods(unittest.TestCase):
         child_success = Leaf.success(child_rule_r2)
         child_rule_r2.children = [child_success]
 
-        self.assertEquals(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+        self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
