@@ -329,7 +329,9 @@ class CoinductiveHypothesisSet:
                 if isinstance(old_arg, Variable) and isinstance(new_arg, Variable):
                     rename_map[old_arg] = new_arg
                 elif isinstance(old_arg, TopLevelSymbol) and isinstance(new_arg, TopLevelSymbol):
-                    for i in range(elem.atom.symbol.arity):
+                    if not old_arg.match(new_arg):
+                        continue
+                    for i in range(old_arg.arity):
                         queue.append((old_arg.function_arguments[i], new_arg.function_arguments[i]))
         self.renames_(rename_map)
 
@@ -340,14 +342,55 @@ class CoinductiveHypothesisSet:
         return chs
 
     def propagate_literal_up_to_rule_(self, literal: BasicLiteral, literal_index: int, rule: NormalRule):
-        pass
+
+        to_remove = set()
+        for variable in self.bindings:
+            if variable not in self.literal_variables and variable not in literal.variables:
+                to_remove.add(variable)
+        for variable in to_remove:
+            if variable in self.bindings:
+                del self.bindings[variable]
+            if variable in self.prohibited:
+                del self.prohibited[variable]
+        to_remove = set()
+        for variable in self.prohibited:
+            if variable not in self.literal_variables and variable not in literal.variables:
+                to_remove.add(variable)
+        for variable in to_remove:
+            if variable in self.prohibited:
+                del self.prohibited[variable]
+
+        body_literal = rule.body[literal_index]
+        assert isinstance(body_literal, BasicLiteral)
+
+        rename_map = {}
+        for elem in (*self.literals, literal):
+            if not isinstance(elem, BasicLiteral):
+                continue
+            if elem.is_pos != body_literal.is_pos:
+                continue
+            if not elem.atom.match(body_literal.atom):
+                continue
+            if not self.unifies(elem.atom.symbol, body_literal.atom.symbol):
+                continue
+            queue = [(elem.atom.symbol, body_literal.atom.symbol)]
+            while queue:
+                old_arg, new_arg = queue.pop(0)
+                if isinstance(old_arg, Variable) and isinstance(new_arg, Variable):
+                    rename_map[old_arg] = new_arg
+                elif isinstance(old_arg, TopLevelSymbol) and isinstance(new_arg, TopLevelSymbol):
+                    if not old_arg.match(new_arg):
+                        continue
+                    for i in range(old_arg.arity):
+                        queue.append((old_arg.function_arguments[i], new_arg.function_arguments[i]))
+        self.renames_(rename_map)
 
     def propagate_rule_up_to_literal(self, rule: NormalRule, literal: BasicLiteral) -> ForwardCoinductiveHypothesisSet:
         chs = deepcopy(self)
-        chs.propagate_up_to_literal_(rule, literal)
+        chs.propagate_rule_up_to_literal_(rule, literal)
         return chs
 
-    def propagate_up_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
+    def propagate_rule_up_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
         pass
 
     @staticmethod

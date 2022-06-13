@@ -1098,7 +1098,7 @@ class TestPropagateLiteralUpToRule(unittest.TestCase):
 
     def test_body_vars(self):
         r1 = NormalRule(p_X, (q_Y,))
-        chs = CoinductiveHypothesisSet(set(), {X: {Term.zero()}, F0: {Term.one()}})
+        chs = CoinductiveHypothesisSet({a_X}, {X: {Term.zero()}, F0: {Term.one()}})
         actual = chs.propagate_literal_up_to_rule(q_F0, 0, r1)
-        expected = CoinductiveHypothesisSet(set(), {X: {Term.zero()}}, {Y: {Term.one()}})
+        expected = CoinductiveHypothesisSet({a_X}, {X: {Term.zero()}, Y: {Term.one()}})
         self.assertEqual(expected, actual)
