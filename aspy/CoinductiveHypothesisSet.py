@@ -291,7 +291,25 @@ class CoinductiveHypothesisSet:
         return chs
 
     def propagate_rule_down_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
-        pass
+        rename_map = {}
+        for elem in (*self.literals, *rule.body):
+            if not isinstance(elem, BasicLiteral):
+                continue
+            if elem.is_pos != literal.is_pos:
+                continue
+            if not elem.atom.match(literal.atom):
+                continue
+            if not self.unifies(elem.atom.symbol, literal.atom.symbol):
+                continue
+            queue = [(elem.atom.symbol, literal.atom.symbol)]
+            while queue:
+                old_arg, new_arg = queue.pop(0)
+                if isinstance(old_arg, Variable) and isinstance(new_arg, Variable):
+                    rename_map[old_arg] = new_arg
+                elif isinstance(old_arg, TopLevelSymbol) and isinstance(new_arg, TopLevelSymbol):
+                    for i in range(elem.atom.symbol.arity):
+                        queue.append((old_arg.function_arguments[i], new_arg.function_arguments[i]))
+        self.renames_(rename_map)
 
     def propagate_literal_up_to_rule(self, literal: BasicLiteral, rule: NormalRule) -> ForwardCoinductiveHypothesisSet:
         chs = deepcopy(self)
