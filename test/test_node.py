@@ -7,7 +7,7 @@ from aspy.Literal import BasicLiteral
 from aspy.Node import RuleNode, LiteralNode, Leaf, GoalNode
 from aspy.NormalRule import NormalRule
 from aspy.Program import RuleMap
-from aspy.Symbol import Variable, Function, Term
+from aspy.Symbol import Variable, Function, Term, IntegerConstant
 
 p = BasicLiteral.make_literal('p')
 
@@ -21,6 +21,7 @@ p_Y = BasicLiteral.make_literal('p', Y)
 
 q = BasicLiteral.make_literal('q')
 q_1 = BasicLiteral.make_literal('q', 1)
+q_2 = BasicLiteral.make_literal('q', 2)
 q_X = BasicLiteral.make_literal('q', X)
 
 r = BasicLiteral.make_literal('r')
@@ -392,15 +393,15 @@ class TestNodeMethods(unittest.TestCase):
                               msg="\nExpected: ({})\n  Actual: ({})\n".format(",".join(map(str, expected)),
                                                                               ",".join(map(str, actual))))
 
-    def test_pred_node_expansion(self):
+    def test_pred_node_expansion1(self):
         r1 = NormalRule(p_X, (q_X,))
         r2 = NormalRule(q_1)
         d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
-        d2 = NormalRule(body_fails(1, (X,)), -q_X)
+        d2 = NormalRule(body_fails(1, (X,)), (-q_X,))
         rule_map: RuleMap = {
             "p/1.": {"primal": [r1], "dual": [d1]},
             "q/1.": {"primal": [r2], "dual": []},
-            "__body_fails/3": {"primal": [d2], "dual": []}
+            "__body_fails/3.": {"primal": [d2], "dual": []}
         }
 
         goal = Goal((p_1,))
@@ -409,7 +410,7 @@ class TestNodeMethods(unittest.TestCase):
         actual.expand(rule_map)
 
         expected = GoalNode(subject=goal,
-                            hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
+                            hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}}, {X: set()})])
 
         child_lit_p_1 = LiteralNode(subject=p_1,
                                     parent=expected,
@@ -422,6 +423,7 @@ class TestNodeMethods(unittest.TestCase):
         child_lit_q_X = LiteralNode(subject=q_X,
                                     parent=child_rule_r1,
                                     hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
+        child_lit_p_1.children = [child_lit_q_X]
         child_rule_r2 = RuleNode(subject=r2,
                                  parent=child_lit_q_X,
                                  hypotheses=[CoinductiveHypothesisSet({p_1, q_X}, {X: {Term.one()}})])
@@ -430,3 +432,129 @@ class TestNodeMethods(unittest.TestCase):
         child_rule_r2.children = [child_success]
 
         self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+
+    def test_pred_node_expansion2(self):
+        r1 = NormalRule(p_X, (q_X,))
+        r2 = NormalRule(q_1)
+        d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
+        d2 = NormalRule(body_fails(1, (X,)), (-q_X,))
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1], "dual": [d1]},
+            "q/1.": {"primal": [r2], "dual": []},
+            "__body_fails/3.": {"primal": [d2], "dual": []}
+        }
+
+        goal = Goal((p_X,))
+        actual = GoalNode(subject=goal)
+        actual.init()
+        actual.expand(rule_map)
+
+        expected = GoalNode(subject=goal,
+                            hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}}, {X: set()})])
+
+        child_lit_p_X = LiteralNode(subject=p_X,
+                                    parent=expected,
+                                    hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        expected.children = [child_lit_p_X]
+        child_rule_r1 = RuleNode(subject=r1,
+                                 parent=child_lit_p_X,
+                                 hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_lit_p_X.children = [child_rule_r1]
+        child_lit_q_X = LiteralNode(subject=q_X,
+                                    parent=child_rule_r1,
+                                    hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_rule_r1.children = [child_lit_q_X]
+        child_rule_r2 = RuleNode(subject=r2,
+                                 parent=child_lit_q_X,
+                                 hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_lit_q_X.children = [child_rule_r2]
+        child_success = Leaf.success(child_rule_r2)
+        child_rule_r2.children = [child_success]
+
+        self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+
+    def test_pred_node_expansion3(self):
+        r1 = NormalRule(p_X, (q_X,))
+        r2 = NormalRule(q_1)
+        r3 = NormalRule(q_2)
+        d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
+        d2 = NormalRule(body_fails(1, (X,)), (-q_X,))
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1], "dual": [d1]},
+            "q/1.": {"primal": [r2, r3], "dual": []},
+            "__body_fails/3.": {"primal": [d2], "dual": []}
+        }
+
+        goal = Goal((p_X,))
+        actual = GoalNode(subject=goal)
+        actual.init()
+        actual.expand(rule_map)
+
+        expected = GoalNode(subject=goal,
+                            hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}}, {X: set()}),
+                                        CoinductiveHypothesisSet({p_X, q_X}, {X: {Term(IntegerConstant(2))}}, {X: set()})
+                                        ])
+
+        child_lit_p_X = LiteralNode(subject=p_X,
+                                    parent=expected,
+                                    hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        expected.children = [child_lit_p_X]
+        child_rule_r1 = RuleNode(subject=r1,
+                                 parent=child_lit_p_X,
+                                 hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_lit_p_X.children = [child_rule_r1]
+        child_lit_q_X = LiteralNode(subject=q_X,
+                                    parent=child_rule_r1,
+                                    hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_rule_r1.children = [child_lit_q_X]
+        child_rule_r2 = RuleNode(subject=r2,
+                                 parent=child_lit_q_X,
+                                 hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_rule_r3 = RuleNode(subject=r3,
+                                 parent=child_lit_q_X,
+                                 hypotheses=[CoinductiveHypothesisSet({p_X, q_X}, {X: {Term.one()}})])
+        child_lit_q_X.children = [child_rule_r2, child_rule_r3]
+        child_success1 = Leaf.success(child_rule_r2)
+        child_rule_r2.children = [child_success1]
+        child_success2 = Leaf.success(child_rule_r3)
+        child_rule_r3.children = [child_success2]
+
+        self.assertEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
+
+    def test_pred_answer_sets1(self):
+        r1 = NormalRule(p_X, (-q,))
+        d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
+        d2 = NormalRule(body_fails(1, (X,)), (q,))
+        d3 = NormalRule(-q)
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1], "dual": [d1]},
+            "q/0.": {"primal": [], "dual": [d3]},
+            "__body_fails/3.": {"primal": [d2], "dual": []}
+        }
+
+        goal = Goal((p_X,))
+        query = GoalNode(subject=goal)
+        query.init()
+        query.expand(rule_map)
+        actual = query.answer_sets()
+        expected = (CoinductiveHypothesisSet({p_X, -q}),)
+        self.assertEqual(expected, actual)
+
+    def test_pred_answer_sets2(self):
+        r1 = NormalRule(p_X, (-q,))
+        r2 = NormalRule(q,)
+        d1 = NormalRule(-p_X, (body_fails(1, (X,)),))
+        d2 = NormalRule(body_fails(1, (X,)), (q,))
+        rule_map: RuleMap = {
+            "p/1.": {"primal": [r1], "dual": [d1]},
+            "q/0.": {"primal": [r2], "dual": []},
+            "__body_fails/3.": {"primal": [d2], "dual": []}
+        }
+
+        goal = Goal((-p_X,))
+        query = GoalNode(subject=goal)
+        query.init()
+        query.expand(rule_map)
+        actual = query.answer_sets()
+        expected = (CoinductiveHypothesisSet({-p_X, q, body_fails(1, (X,))}),)
+        self.assertEqual(expected, actual)

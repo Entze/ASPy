@@ -147,13 +147,17 @@ class RuleNode(Node):
         if self.is_expanded:
             return
         self.children = []
-        for clause_element in self.subject.body:
+        for literal_index,clause_element in enumerate(self.subject.body):
             if isinstance(clause_element, BasicLiteral):
+                for hypothesis in self.hypotheses:
+                    hypothesis.propagate_rule_down_to_literal_(self.subject, literal_index, clause_element)
                 child = LiteralNode(subject=clause_element,
                                     parent=self,
                                     hypotheses=self.hypotheses)
                 child.expand(rule_map)
                 self.children.append(child)
+                for hypothesis in child.hypotheses:
+                    hypothesis.propagate_literal_up_to_rule_(child.subject, literal_index, self.subject)
                 self.hypotheses = child.hypotheses
             else:
                 assert False, "Unexpected Node {} with type {}.".format(clause_element, type(clause_element).__name__)
@@ -187,12 +191,16 @@ class LiteralNode(Node):
 
         if not conclusive:
             rules = rule_map[self.subject.signature]['primal' if self.subject.is_pos else 'dual']
+            expansion_impossible = True
             for rule in rules:
-                child = RuleNode(subject=rule,
-                                 parent=self,
-                                 hypotheses=deepcopy(self.hypotheses))
-                self.children.append(child)
-            if not rules:
+                if any(hypothesis.unifies(self.subject.atom.symbol, rule.head.atom.symbol) for hypothesis in self.hypotheses):
+                    hypotheses = [hypothesis.propagate_literal_down_to_rule(self.subject, rule) for hypothesis in self.hypotheses]
+                    child = RuleNode(subject=rule,
+                                     parent=self,
+                                     hypotheses=hypotheses)
+                    self.children.append(child)
+                    expansion_impossible = False
+            if expansion_impossible:
                 child = Leaf.fail(self)
                 self.children.append(child)
             for child in self.children:
@@ -202,6 +210,7 @@ class LiteralNode(Node):
         for child in self.children:
             if child.is_success and not isinstance(child, Leaf):
                 for hypothesis in child.hypotheses:
+                    hypothesis.propagate_rule_up_to_literal_(child.subject, self.subject)
                     if hypothesis not in hypotheses:
                         hypotheses.append(hypothesis)
         if self.children and all(child.is_success for child in self.children) and not hypotheses:
