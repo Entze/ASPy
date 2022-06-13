@@ -35,8 +35,11 @@ class CoinductiveHypothesisSet:
 
     @property
     def variables(self) -> Set[Variable]:
-        return self.bindings.keys() | self.prohibited.keys() | set(
-            variable for literal in self.literals for variable in literal.variables)
+        return self.bindings.keys() | self.prohibited.keys() | self.literal_variables
+
+    @property
+    def literal_variables(self):
+        return set(variable for literal in self.literals for variable in literal.variables)
 
     def add_literal(self, literal: BasicLiteral) -> bool:
         self.literals.add(literal)
@@ -285,14 +288,33 @@ class CoinductiveHypothesisSet:
         self.constructive_unification_(literal.atom.symbol, rule.head.atom.symbol)
 
     def propagate_rule_down_to_literal(self, rule: NormalRule,
+                                       literal_index: int,
                                        literal: BasicLiteral) -> ForwardCoinductiveHypothesisSet:
         chs = deepcopy(self)
-        chs.propagate_rule_down_to_literal_(rule, literal)
+        chs.propagate_rule_down_to_literal_(rule, literal_index, literal)
         return chs
 
-    def propagate_rule_down_to_literal_(self, rule: NormalRule, literal: BasicLiteral):
+    def propagate_rule_down_to_literal_(self, rule: NormalRule, literal_index: int, literal: BasicLiteral):
+
+        to_remove = set()
+        for variable in self.bindings:
+            if variable not in self.literal_variables and variable not in rule.body[literal_index].variables:
+                to_remove.add(variable)
+        for variable in to_remove:
+            if variable in self.bindings:
+                del self.bindings[variable]
+            if variable in self.prohibited:
+                del self.prohibited[variable]
+        to_remove = set()
+        for variable in self.prohibited:
+            if variable not in self.literal_variables and variable not in rule.body[literal_index].variables:
+                to_remove.add(variable)
+        for variable in to_remove:
+            if variable in self.prohibited:
+                del self.prohibited[variable]
+
         rename_map = {}
-        for elem in (*self.literals, *rule.body):
+        for elem in (*self.literals, rule.body[literal_index]):
             if not isinstance(elem, BasicLiteral):
                 continue
             if elem.is_pos != literal.is_pos:
@@ -311,12 +333,13 @@ class CoinductiveHypothesisSet:
                         queue.append((old_arg.function_arguments[i], new_arg.function_arguments[i]))
         self.renames_(rename_map)
 
-    def propagate_literal_up_to_rule(self, literal: BasicLiteral, rule: NormalRule) -> ForwardCoinductiveHypothesisSet:
+    def propagate_literal_up_to_rule(self, literal: BasicLiteral, literal_index: int,
+                                     rule: NormalRule) -> ForwardCoinductiveHypothesisSet:
         chs = deepcopy(self)
-        chs.propagate_literal_up_to_rule_(literal, rule)
+        chs.propagate_literal_up_to_rule_(literal, literal_index, rule)
         return chs
 
-    def propagate_literal_up_to_rule_(self, literal: BasicLiteral, rule: NormalRule):
+    def propagate_literal_up_to_rule_(self, literal: BasicLiteral, literal_index: int, rule: NormalRule):
         pass
 
     def propagate_rule_up_to_literal(self, rule: NormalRule, literal: BasicLiteral) -> ForwardCoinductiveHypothesisSet:
