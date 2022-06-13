@@ -1022,3 +1022,22 @@ class TestPropagateRuleDownToLiteral(unittest.TestCase):
         expected = CoinductiveHypothesisSet(bindings=defaultdict(set, {X: {Term.one()}, F0: {Term.zero()}}),
                                             prohibited=defaultdict(set, {X: {Term.zero()}, F0: {Term.one()}}))
         self.assertEqual(expected, actual)
+
+    def test_compound(self):
+        r1 = NormalRule(p, (BasicLiteral.make_literal('a', 1, Function('b', (X, Y))),))
+        lit =               BasicLiteral.make_literal('a', 1, Function('b', (F0, F1)))
+        chs = CoinductiveHypothesisSet(bindings=defaultdict(set, {X: {Term.one()}, Y: {Term.zero()}}),
+                                       prohibited=defaultdict(set, {X: {Term.zero()}, Y: {Term.one()}}))
+        actual = chs.propagate_rule_down_to_literal(r1, lit)
+        expected = CoinductiveHypothesisSet(bindings=defaultdict(set, {F0: {Term.one()}, F1: {Term.zero()}}),
+                                            prohibited=defaultdict(set, {F0: {Term.zero()}, F1: {Term.one()}}))
+        self.assertEqual(expected, actual)
+
+
+class TestPropagateLiteralUpToRule(unittest.TestCase):
+
+    def test_empty1(self):
+        r1 = NormalRule(p, (q,))
+        chs = CoinductiveHypothesisSet()
+        actual = chs.propagate_literal_up_to_rule(q, r1)
+        expected = CoinductiveHypothesisSet()
