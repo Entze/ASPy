@@ -189,7 +189,22 @@ class CoinductiveHypothesisSet:
         return chs.constructive_disunification_(left, right)
 
     def constructive_disunification_(self, left: Symbol, right: Symbol) -> Sequence[ForwardCoinductiveHypothesisSet]:
-        pass
+        if left == right:
+            return ()
+        elif isinstance(left, Variable) ^ isinstance(right, Variable):
+            if isinstance(left, Variable) and isinstance(right, NonVariable):
+                return CoinductiveHypothesisSet.__constructive_disunification_var_non_var(self, left, right)
+            else:
+                assert isinstance(right, Variable) and isinstance(left,
+                                                                  NonVariable), "Unknown Symbol {} of type {}.".format(
+                    left, type(left).__name__)
+                return CoinductiveHypothesisSet.__constructive_disunification_var_non_var(self, right, left)
+        elif isinstance(left, Variable) and isinstance(right, Variable):
+            return CoinductiveHypothesisSet.__constructive_disunification_var_var(self, left, right)
+        elif isinstance(left, TopLevelSymbol) and isinstance(right, TopLevelSymbol):
+            return CoinductiveHypothesisSet.__constructive_disunification_compound_compound(self, left, right)
+        else:
+            return self,
 
     @staticmethod
     def __constructive_unification_var_non_var(chs: ForwardCoinductiveHypothesisSet,
@@ -238,3 +253,49 @@ class CoinductiveHypothesisSet:
             chs, = unified
             unified = chs.constructive_unification_(fun1.function_arguments[i], fun2.function_arguments[i])
         return unified
+
+    @staticmethod
+    def __constructive_disunification_var_non_var(chs: ForwardCoinductiveHypothesisSet,
+                                                  var: Variable,
+                                                  non_var: NonVariable) -> Sequence[ForwardCoinductiveHypothesisSet]:
+        assert isinstance(var, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var,
+                                                                                                   type(var).__name__)
+        assert isinstance(non_var, NonVariable), "Symbol {} has to be a NonVariable, but is type {}.".format(non_var,
+                                                                                                             type(
+                                                                                                                 non_var).__name__)
+        chs.prohibited[var].add(non_var)
+        return chs,
+
+    @staticmethod
+    def __constructive_disunification_var_var(chs: ForwardCoinductiveHypothesisSet,
+                                              var1: Variable,
+                                              var2: Variable) -> Sequence[ForwardCoinductiveHypothesisSet]:
+        assert isinstance(var1, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var1,
+                                                                                                    type(var1).__name__)
+        assert isinstance(var2, Variable), "Symbol {} has to be a Variable, but is type {}.".format(var2,
+                                                                                                    type(var2).__name__)
+        if chs.is_negatively_constrained(var1) and chs.is_negatively_constrained(var2):
+            raise Exception("Disunification of two negatively constrained variables is not defined.")
+
+        chs.prohibited[var1].add(var2)
+        chs.prohibited[var2].add(var1)
+        return chs,
+
+    @staticmethod
+    def __constructive_disunification_compound_compound(chs: ForwardCoinductiveHypothesisSet,
+                                                        fun1: TopLevelSymbol,
+                                                        fun2: TopLevelSymbol) -> Sequence[
+        ForwardCoinductiveHypothesisSet]:
+        assert isinstance(fun1, TopLevelSymbol), "Symbol {} has to be a TopLevelSymbol, but is type {}.".format(fun1,
+                                                                                                                type(
+                                                                                                                    fun1).__name__)
+        assert isinstance(fun2, TopLevelSymbol), "Symbol {} has to be a TopLevelSymbol, but is type {}.".format(fun2,
+                                                                                                                type(
+                                                                                                                    fun2).__name__)
+        if not fun1.match(fun2):
+            return (chs,)
+        disunifications = []
+        for i in range(fun1.arity):
+            ds = chs.constructive_disunification(fun1.function_arguments[i], fun2.function_arguments[i])
+            disunifications.extend(ds)
+        return tuple(disunifications)
