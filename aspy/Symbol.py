@@ -3,8 +3,6 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TypeVar, Set, Mapping, Union, Sequence, Optional, List, Tuple, Dict
 
-import clingo.ast
-
 ForwardSymbol = TypeVar('ForwardSymbol', bound='Symbol')
 ForwardVariable = TypeVar('ForwardVariable', bound='Variable')
 
@@ -31,8 +29,6 @@ class Symbol(abc.ABC):
     @abc.abstractmethod
     def substitute_variables(self, substitute_map: Mapping[ForwardVariable, ForwardSymbol]) -> ForwardSymbol:
         raise NotImplementedError
-
-
 
 
 @dataclass(order=True, frozen=True)
@@ -204,4 +200,3 @@ class Function(TopLevelSymbol):
             else:
                 arguments.append(argument)
         return Function(self.name, tuple(arguments))
-

@@ -75,10 +75,11 @@ def _from_clingo_ast_literal(ast: clingo.ast.AST) -> BasicLiteral:
 
 
 def _from_clingo_ast_comparison(ast: clingo.ast.AST) -> Comparison:
-        left = _from_clingo_ast_symbol(ast.left)
-        op = ComparisonOperator(ast.comparison)
-        right = _from_clingo_ast_symbol(ast.right)
-        return Comparison(left, op, right)
+    left = _from_clingo_ast_symbol(ast.left)
+    op = ComparisonOperator(ast.comparison)
+    right = _from_clingo_ast_symbol(ast.right)
+    return Comparison(left, op, right)
+
 
 def _from_clingo_ast_head_clause_element(ast: clingo.ast.AST) -> HeadClauseElement:
     if ast.ast_type is clingo.ast.ASTType.Literal:

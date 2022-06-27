@@ -3,8 +3,6 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Mapping, Sequence, List, Dict, Set, Tuple, TypeVar
 
-import clingo.ast
-
 from aspy.Atom import Atom
 from aspy.ClauseElement import ClauseElement, HeadClauseElement
 from aspy.Directive import Directive
@@ -316,6 +314,3 @@ class Program:
             if l not in h2n:
                 dual_rules.append(NormalRule(-l))
         return dual_rules
-
-
-

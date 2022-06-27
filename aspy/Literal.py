@@ -3,11 +3,11 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Set, Mapping, Optional, Union, TypeVar
 
-from aspy.Atom import Atom
-import aspy.ClauseElement
-from aspy.Symbol import Variable, Symbol, Function, IntegerConstant, Term
-
 import clingo.ast
+
+import aspy.ClauseElement
+from aspy.Atom import Atom
+from aspy.Symbol import Variable, Symbol, Function, IntegerConstant, Term
 
 ForwardLiteral = TypeVar('ForwardLiteral', bound='Literal')
 
@@ -105,5 +105,3 @@ class BasicLiteral(Literal):
                 arg = arg_
             function_arguments.append(arg)
         return BasicLiteral(atom=Atom(Function(name=name, arguments=tuple(function_arguments))))
-
-

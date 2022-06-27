@@ -2,8 +2,6 @@ import abc
 from dataclasses import dataclass, field
 from typing import Optional, Sequence, Set, TypeVar, Dict, List, Tuple
 
-import clingo.ast
-
 from aspy.Atom import Atom
 from aspy.ClauseElement import HeadClauseElement, ClauseElement
 from aspy.Comparison import Comparison, ComparisonOperator
@@ -65,6 +63,7 @@ class Rule(abc.ABC):
 
 ForwardNormalRule = TypeVar('ForwardNormalRule', bound="NormalRule")
 
+
 @dataclass(order=True, frozen=True)
 class NormalRule(Rule):
     head: BasicLiteral = field(default_factory=BasicLiteral)
@@ -121,8 +120,6 @@ class NormalRule(Rule):
         new_body = (*equalities, *(element.substitute_variables(substitute_map) for element in self.body))
         new_rule = NormalRule(new_head.substitute_variables(substitute_map), new_body)
         return new_rule
-
-
 
 
 @dataclass(order=True, frozen=True)

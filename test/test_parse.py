@@ -1,4 +1,3 @@
-
 # noinspection DuplicatedCode
 import unittest
 
@@ -50,7 +49,7 @@ class TestFromString(unittest.TestCase):
         q_Y = BasicLiteral.make_literal('q', Y)
         nested = BasicLiteral.make_literal('nested', Function('this', (X,)), X, Y)
         expected = Program((
-            NormalRule(p_X, (q_X,q_Y, Comparison(X, ComparisonOperator.NotEqual, Y))),
+            NormalRule(p_X, (q_X, q_Y, Comparison(X, ComparisonOperator.NotEqual, Y))),
             NormalRule(nested),
         ))
         actual = from_string(prg_str)

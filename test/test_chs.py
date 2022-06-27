@@ -1103,6 +1103,7 @@ class TestPropagateLiteralUpToRule(unittest.TestCase):
         expected = CoinductiveHypothesisSet({a_X}, {X: {Term.zero()}, Y: {Term.one()}})
         self.assertEqual(expected, actual)
 
+
 class TestPropagateRuleUpToLiteral(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -1124,9 +1125,11 @@ class TestPropagateRuleUpToLiteral(unittest.TestCase):
 
     def test_prop(self):
         r1 = NormalRule(p, (q, a))
-        chs = CoinductiveHypothesisSet({a_X, p_Y}, {X: {Term.one()}, Y: {Term.zero()}}, {X:{Term.zero()}, Y:{Term.one()}})
+        chs = CoinductiveHypothesisSet({a_X, p_Y}, {X: {Term.one()}, Y: {Term.zero()}},
+                                       {X: {Term.zero()}, Y: {Term.one()}})
         actual = chs.propagate_rule_up_to_literal(r1, p)
-        expected = CoinductiveHypothesisSet({a_X, p_Y}, {X: {Term.one()}, Y: {Term.zero()}}, {X:{Term.zero()}, Y:{Term.one()}})
+        expected = CoinductiveHypothesisSet({a_X, p_Y}, {X: {Term.one()}, Y: {Term.zero()}},
+                                            {X: {Term.zero()}, Y: {Term.one()}})
         self.assertEqual(expected, actual)
 
     def test_bound_var1(self):

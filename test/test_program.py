@@ -1,11 +1,9 @@
 import unittest
-from typing import Sequence, Iterable
 
 from aspy.Directive import Directive
-from aspy.Rule import IntegrityConstraint
 from aspy.Literal import BasicLiteral
-from aspy.Rule import NormalRule
 from aspy.Program import Program
+from aspy.Rule import NormalRule
 
 a: BasicLiteral = BasicLiteral.make_literal('a')
 b: BasicLiteral = BasicLiteral.make_literal('b')
@@ -194,5 +192,3 @@ class TestProgramMethods(unittest.TestCase):
         }
 
         self.assertDictEqual(expected, actual, msg="\nExpected: {}\n  Actual: {}\n".format(expected, actual))
-
-

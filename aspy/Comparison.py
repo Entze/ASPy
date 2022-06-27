@@ -2,10 +2,11 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Set, Mapping, TypeVar
 
+import clingo.ast
+
 from aspy.ClauseElement import ClauseElement
 from aspy.Symbol import Symbol, Variable
 
-import clingo.ast
 
 class ComparisonOperator(IntEnum):
     Equal = clingo.ast.ComparisonOperator.Equal
@@ -31,7 +32,9 @@ class ComparisonOperator(IntEnum):
             op = '!='
         return op
 
+
 ForwardComparison = TypeVar('ForwardComparison', bound='Comparison')
+
 
 @dataclass(order=True, frozen=True)
 class Comparison(ClauseElement):
