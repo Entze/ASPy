@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Set, MutableMapping, Mapping, Sequence, TypeVar, Union, ClassVar, Iterable
 
 from aspy.Literal import BasicLiteral
-from aspy.NormalRule import NormalRule
+from aspy.Rule import NormalRule
 from aspy.Symbol import Variable, Symbol, Term, Function, TopLevelSymbol
 
 Unifications = Mapping[Variable, Set[Symbol]]

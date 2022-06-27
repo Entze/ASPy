@@ -1,10 +1,8 @@
 from dataclasses import field, dataclass
-from typing import Set, Mapping, Union, TypeVar, Sequence
+from typing import Set, Mapping, Union, Sequence
 
 from aspy.ClauseElement import HeadClauseElement
 from aspy.Symbol import Variable, Symbol
-
-ForwardDirective = TypeVar('ForwardDirective', bound='Directive')
 
 
 @dataclass(order=True, frozen=True)

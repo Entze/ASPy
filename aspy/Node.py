@@ -7,9 +7,9 @@ from aspy.ClauseElement import ClauseElement
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
 from aspy.Comparison import Comparison, ComparisonOperator
 from aspy.Directive import Directive
-from aspy.Goal import Goal
+from aspy.Rule import Goal
 from aspy.Literal import BasicLiteral
-from aspy.NormalRule import NormalRule
+from aspy.Rule import NormalRule
 from aspy.Program import RuleMap
 from aspy.Symbol import Variable, TopLevelSymbol
 

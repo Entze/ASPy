@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import TypeVar, Set, Mapping
 
+import clingo.ast
+
 from aspy.Symbol import TopLevelSymbol, Function, Variable, Symbol
 
 ForwardAtom = TypeVar('ForwardAtom', bound='Atom')
@@ -31,3 +33,4 @@ class Atom:
 
     def substitute_variables(self, substitute_map: Mapping[Variable, Symbol]):
         return Atom(self.symbol.substitute_variables(substitute_map))
+

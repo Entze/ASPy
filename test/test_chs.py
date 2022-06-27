@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from aspy.CoinductiveHypothesisSet import CoinductiveHypothesisSet
 from aspy.Literal import BasicLiteral
-from aspy.NormalRule import NormalRule
+from aspy.Rule import NormalRule
 from aspy.Symbol import Variable, Term, Function
 
 X = Variable('X')

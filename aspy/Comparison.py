@@ -1,18 +1,19 @@
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Set, Mapping
+from typing import Set, Mapping, TypeVar
 
 from aspy.ClauseElement import ClauseElement
 from aspy.Symbol import Symbol, Variable
 
+import clingo.ast
 
 class ComparisonOperator(IntEnum):
-    Equal = 0
-    GreaterEqual = 1
-    GreaterThan = 2
-    LessEqual = 3
-    LessThan = 4
-    NotEqual = 5
+    Equal = clingo.ast.ComparisonOperator.Equal
+    GreaterEqual = clingo.ast.ComparisonOperator.GreaterEqual
+    GreaterThan = clingo.ast.ComparisonOperator.GreaterThan
+    LessEqual = clingo.ast.ComparisonOperator.LessEqual
+    LessThan = clingo.ast.ComparisonOperator.LessThan
+    NotEqual = clingo.ast.ComparisonOperator.NotEqual
 
     def __str__(self):
         if self is ComparisonOperator.Equal:
@@ -30,6 +31,7 @@ class ComparisonOperator(IntEnum):
             op = '!='
         return op
 
+ForwardComparison = TypeVar('ForwardComparison', bound='Comparison')
 
 @dataclass(order=True, frozen=True)
 class Comparison(ClauseElement):

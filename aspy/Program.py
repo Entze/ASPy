@@ -1,17 +1,20 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Mapping, Sequence, List, Dict, Set, Tuple
+from typing import Mapping, Sequence, List, Dict, Set, Tuple, TypeVar
+
+import clingo.ast
 
 from aspy.Atom import Atom
 from aspy.ClauseElement import ClauseElement, HeadClauseElement
 from aspy.Directive import Directive
 from aspy.Literal import Literal, BasicLiteral, Sign
-from aspy.NormalRule import NormalRule
-from aspy.Rule import Rule
+from aspy.Rule import NormalRule, Rule
 from aspy.Symbol import Function, Term, IntegerConstant
 
 RuleMap = Mapping[str, Mapping[str, Sequence[NormalRule]]]
+
+ForwardProgram = TypeVar('ForwardProgram', bound='Program')
 
 
 @dataclass(order=True, frozen=True)
@@ -138,9 +141,11 @@ class Program:
         prop_check_rules = Program.propositional_dual(prop_constraint_rules)
         pred_check_rules = Program.propositional_dual(pred_constraint_rules)
         for prop_check_rule in prop_check_rules:
-            signature_rules[prop_check_rule.head.signature]['primal' if prop_check_rule.head.is_pos else 'dual'].append(prop_check_rule)
+            signature_rules[prop_check_rule.head.signature]['primal' if prop_check_rule.head.is_pos else 'dual'].append(
+                prop_check_rule)
         for pred_check_rule in pred_check_rules:
-            signature_rules[pred_check_rule.head.signature]['primal' if pred_check_rule.head.is_pos else 'dual'].append(pred_check_rule)
+            signature_rules[pred_check_rule.head.signature]['primal' if pred_check_rule.head.is_pos else 'dual'].append(
+                pred_check_rule)
 
         nmr_rule = NormalRule(__nmr_chk, tuple(nmr_rule_body))
         signature_rules[__nmr_chk.signature]['primal'].append(nmr_rule)
@@ -311,3 +316,6 @@ class Program:
             if l not in h2n:
                 dual_rules.append(NormalRule(-l))
         return dual_rules
+
+
+

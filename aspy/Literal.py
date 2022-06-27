@@ -1,14 +1,18 @@
 import abc
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Set, Mapping, Optional, Union
+from typing import Set, Mapping, Optional, Union, TypeVar
 
 from aspy.Atom import Atom
-from aspy.ClauseElement import HeadClauseElement
+import aspy.ClauseElement
 from aspy.Symbol import Variable, Symbol, Function, IntegerConstant, Term
 
+import clingo.ast
 
-class Literal(HeadClauseElement):
+ForwardLiteral = TypeVar('ForwardLiteral', bound='Literal')
+
+
+class Literal(aspy.ClauseElement.HeadClauseElement):
 
     @property
     @abc.abstractmethod
@@ -25,10 +29,17 @@ class Literal(HeadClauseElement):
     def is_neg(self) -> bool:
         raise NotImplementedError
 
+    @staticmethod
+    def from_clingo_ast(ast: clingo.ast.AST) -> ForwardLiteral:
+        if ast.ast_type is clingo.ast.ASTType.Literal:
+            return BasicLiteral.from_clingo_ast(ast)
+        else:
+            raise NotImplementedError("Literal {} unhandled clingo.ast_type {}.".format(ast.symbol, ast.symbol.type))
+
 
 class Sign(IntEnum):
-    NoSign = 0
-    Negation = 1
+    NoSign = clingo.ast.Sign.NoSign
+    Negation = clingo.ast.Sign.Negation
 
     def __str__(self):
         if self is Sign.NoSign:
@@ -37,6 +48,9 @@ class Sign(IntEnum):
             return 'not'
         else:
             assert False, 'Unknown IntEnum {} = {}.'.format(self.name, self.value)
+
+
+ForwardBasicLiteral = TypeVar('ForwardBasicLiteral', bound='BasicLiteral')
 
 
 @dataclass(order=True, frozen=True)
@@ -91,3 +105,5 @@ class BasicLiteral(Literal):
                 arg = arg_
             function_arguments.append(arg)
         return BasicLiteral(atom=Atom(Function(name=name, arguments=tuple(function_arguments))))
+
+

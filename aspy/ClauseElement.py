@@ -1,9 +1,10 @@
 import abc
 from dataclasses import dataclass
-from typing import Set, Mapping
+from typing import Set, Mapping, TypeVar
 
 from aspy.Symbol import Variable, Symbol
 
+ForwardClauseElement = TypeVar('ForwardClauseElement', bound='ClauseElement')
 
 @dataclass(order=True, frozen=True)
 class ClauseElement(abc.ABC):
@@ -42,6 +43,8 @@ class ClauseElement(abc.ABC):
 
     def __abs__(self):
         raise NotImplementedError
+
+
 
 
 class HeadClauseElement(ClauseElement):
